@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=preprocessing
-#SBATCH --output=%x.o%j 
+#SBATCH --job-name=one_shot
+#SBATCH --output=%x.o%j.txt
 #SBATCH --time=3:00:00 
 #SBATCH --ntasks=1 
 #SBATCH --partition=cpu_long
