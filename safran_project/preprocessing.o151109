@@ -1,0 +1,17 @@
+/gpfs/workdir/dunoyerg/one_shot_data/cave /gpfs/workdir/dunoyerg/one_shot_data/data
+___________________
+point_1
+- - - - - - - - - - - - -
+Point-1-f.jpg
+(250, 141)
++++++++++
+Traceback (most recent call last):
+  File "one_shot_learning.py", line 362, in <module>
+    main(path__, path_data)
+  File "one_shot_learning.py", line 326, in main
+    transform_data(path, path_data, size_wanted)
+  File "one_shot_learning.py", line 166, in transform_data
+    images += function(img_)
+  File "one_shot_learning.py", line 77, in translation_down
+    img[j][i] = img[j-20][i]
+IndexError: index 141 is out of bounds for axis 0 with size 141

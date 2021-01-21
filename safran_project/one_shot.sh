@@ -1,0 +1,19 @@
+#!/bin/bash
+
+#SBATCH --job-name=preprocessing
+#SBATCH --output=%x.o%j 
+#SBATCH --time=3:00:00 
+#SBATCH --ntasks=1 
+#SBATCH --partition=cpu_long
+#SBATCH --mem=10GB
+#SBATCH --mail-user=geoffroy.dunoyer@student.ecp.fr
+
+# Load necessary modules
+module purge
+module load anaconda3/2020.02/gcc-9.2.0
+
+# Activate anaconda environment
+source activate numpy-env
+
+# Run python script
+python3 one_shot_learning.py $WORKDIR/one_shot_data/cave/ $WORKDIR/one_shot_data/data/
