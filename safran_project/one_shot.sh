@@ -4,8 +4,8 @@
 #SBATCH --output=%x.o%j.txt
 #SBATCH --time=3:00:00 
 #SBATCH --ntasks=1 
-#SBATCH --partition=cpu_long
-#SBATCH --mem=10GB
+#SBATCH --partition=cpu_med
+#SBATCH --mem=100GB
 #SBATCH --mail-user=geoffroy.dunoyer@student.ecp.fr
 
 # Load necessary modules

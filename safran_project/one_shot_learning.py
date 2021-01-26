@@ -13,7 +13,7 @@ from keras.models import Sequential, Model
 from keras.optimizers import RMSprop
 
 #size desired for the pictures
-size = 250
+size = 750
 
 # building data pairs variables
 size_ = 1
