@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=test
 #SBATCH --output=%x.o%j.txt
-#SBATCH --time=1:00:00 
+#SBATCH --time=2:00:00 
 #SBATCH --ntasks=1 
 # SBATCH --partition=cpu_med
 #SBATCH --mem=10GB
@@ -21,4 +21,4 @@ source activate cifar10
 
 # Run python script
 # python3 test_import.py
-python3 oneshotlearning.py $WORKDIR/apprentissage ./data
+python3 oneshotlearning.py $WORKDIR/apprentissage $WORKDIR/temp_data $WORDIR/models

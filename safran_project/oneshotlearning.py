@@ -397,7 +397,7 @@ def test(network, loader, optimizer, device, set_):
     test_loss = 0
     correct = 0
 
-    for data, target in loader:
+    for data, target in enumerate(loader):
         data = data.to(device)
         target = target.to(device)
         target_int = torch.flatten(target, start_dim=0)
@@ -501,7 +501,7 @@ if __name__ == "__main__":
 
 
 
-    print(grid_search([20,30], [10, 20], [0.1, 0.05], data, 
-                    './output.csv', [0.95, 0.05], [2,250, 250]))
+    print(grid_search([20, 30, 50, 70], [20, 35, 50], [0.1, 0.05], data, 
+                    './output.csv', [0.95, 0.05], [2, 250, 250]))
 
 
