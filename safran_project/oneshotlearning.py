@@ -23,6 +23,7 @@ import sys
 import pathlib
 import numpy as np
 import pandas as pd
+import pickle
 import random 
 
 import logging
@@ -179,6 +180,95 @@ from random import randint
 
 """#### Custom Dataset Class"""
 
+# class CustomDataset(Dataset):
+#     """Segmentation & Classification dataset."""
+
+#     def __init__(self, folder_inputs,path_csv,list_indexes, transform=None, train=True):
+#         """
+#         Args:
+#             folder_outputs (string): Path to the folder with.
+#             root_dir (string): Directory with all the images.
+#             transform (callable, optional): Optional transform to be applied
+#                 on a sample.
+#         """
+#         self.data_output = pd.read_csv(path_csv)
+#         self.folder_inputs = folder_inputs
+#         self.list_indexes = list_indexes
+
+#         if train:
+#           self.inputs, self.landmarks = self.generate_random_dataset()
+#         else:
+#           self.inputs, self.landmarks = self.generate_all_pairs()
+
+
+#         self.transform = transform
+
+#     def generate_random_dataset(self):
+#         df_output = self.data_output.iloc[self.list_indexes, :]
+#         pairs = []
+#         output = []
+#         for class_ in set(df_output['class'].values):
+#             df_int = df_output[df_output['class']==class_]
+#             filenames = list(df_int['path'].values)
+#             for i in range(len(filenames)):
+#               for j in range(i+1, len(filenames)):
+#                   output.append(1)
+#                   pairs.append([filenames[i], filenames[j]])
+
+#         filenames = list(df_output['path'].values)
+
+#         for i in range(len(pairs)):
+#             first_file = filenames[randint(0, len(filenames)-1)]
+#             class_first_file = int(df_output[df_output['path'] == first_file]['class'].values)
+#             list_second_file = list(df_output[df_output['class'] != class_first_file]['path'].values)
+#             output.append(0)
+#             pairs.append([first_file, list_second_file[randint(0, len(list_second_file)-1)]])
+        
+#         return(pairs, output)
+
+#     def generate_all_pairs(self):
+#       df_output = self.data_output.iloc[self.list_indexes, :]
+#       pairs = []
+#       output = []
+#       filenames = df_output['path'].values
+#       for i in range(len(filenames)):
+#         for j in range(i+1, len(filenames)):
+#             if len(set(df_output[(df_output['path'] == filenames[i]) | (df_output['path'] == filenames[j])]['class'].values))==1:
+#               output.append(1)
+#             else: 
+#               output.append(0)
+#             pairs.append([filenames[i], filenames[j]])
+
+#       return(pairs, output)
+
+
+#     def __len__(self):
+#         return len(self.landmarks)
+
+#     def __getitem__(self, idx):
+#         if torch.is_tensor(idx):
+#             idx = idx.tolist()[0]
+        
+
+#         landmarks = [self.landmarks[idx]]
+#         image1 = rgb2gray(plt.imread(self.folder_inputs+self.inputs[idx][0]))
+#         image2 = rgb2gray(plt.imread(self.folder_inputs+self.inputs[idx][1]))
+
+#         pair = np.zeros([2,image2.shape[0], image2.shape[1]])  # 2 is for pairs
+
+#         pair[0, :, :] = image1
+#         pair[1, :, :] = image2
+
+#         landmarks = np.array([landmarks])
+
+#         if self.transform:
+#             pair = self.transform(pair)
+#             pair = torch.transpose(pair, 0, 1)
+
+#             landmarks = self.transform(landmarks)
+            
+#         return pair, landmarks
+
 class CustomDataset(Dataset):
     """Segmentation & Classification dataset."""
 
@@ -193,6 +283,7 @@ class CustomDataset(Dataset):
         self.data_output = pd.read_csv(path_csv)
         self.folder_inputs = folder_inputs
         self.list_indexes = list_indexes
+        self.max_nb_false_pair=40
 
         if train:
           self.inputs, self.landmarks = self.generate_random_dataset()
@@ -210,7 +301,8 @@ class CustomDataset(Dataset):
             df_int = df_output[df_output['class']==class_]
             filenames = list(df_int['path'].values)
             for i in range(len(filenames)):
-              for j in range(i+1, len(filenames)):
+              #for j in range(i+1, len(filenames)):
+              for j in range(i+1, min(len(filenames),i+1+self.max_nb_false_pair)):
                   output.append(1)
                   pairs.append([filenames[i], filenames[j]])
 
@@ -231,7 +323,8 @@ class CustomDataset(Dataset):
       output = []
       filenames = df_output['path'].values
       for i in range(len(filenames)):
-        for j in range(i+1, len(filenames)):
+        #for j in range(i+1, len(filenames)):
+        for j in range(i+1, min(len(filenames),1+i+self.max_nb_false_pair)):
             if len(set(df_output[(df_output['path'] == filenames[i]) | (df_output['path'] == filenames[j])]['class'].values))==1:
               output.append(1)
             else: 
@@ -267,6 +360,7 @@ class CustomDataset(Dataset):
             landmarks = self.transform(landmarks)
             
         return pair, landmarks
+
 
 """#### Custom DataLoaders"""
 
@@ -391,13 +485,14 @@ def train(epoch, network, loader, optimizer, device):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(loader.dataset),
                 100. * batch_idx / len(loader), loss.item()))
+    return loss
 
 def test(network, loader, optimizer, device, set_):
     network.eval()
     test_loss = 0
     correct = 0
 
-    for data, target in enumerate(loader):
+    for batch_idx, (data, target) in enumerate(loader):
         data = data.to(device)
         target = target.to(device)
         target_int = torch.flatten(target, start_dim=0)
@@ -406,6 +501,7 @@ def test(network, loader, optimizer, device, set_):
         test_loss += F.cross_entropy(output, target_int)
 
         pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
+        print(pred)
         correct += pred.eq(target_int.data.view_as(pred)).cpu().sum()
 
     test_loss /= len(loader.dataset)
@@ -417,17 +513,17 @@ def test(network, loader, optimizer, device, set_):
 """#### Execution"""
 
 if __name__ == "__main__":
+
     photos = os.path.abspath(sys.argv[1])+"/"
-    data = os.path.abspath(sys.argv[2])+"/"
+    data_photos = os.path.abspath(sys.argv[2])
     output = os.path.abspath(sys.argv[3])+"/"
+    print(photos, data_photos, output)
     # df = transform_data("./photos_apprentissage/", './data/','', new_size=[250,250], rgb=False)
-    df = transform_data(photos, data,'', new_size=[250,250], rgb=False)
-    print(df)
-    print(df.head())
-    df.to_csv('./output.csv')
+    # df = transform_data(photos, output,'', new_size=[250,250], rgb=False)
+    # df.to_csv('./output.csv')
 
     # data_transform = transforms.Compose([transforms.ToTensor()])
-    # dataloaders = get_dataloaders(data,'./output.csv', 20, data_transform, [0.95, 0.05], False)
+    # dataloaders = get_dataloaders(output,data_photos, 20, data_transform, [0.95, 0.05], False)
 
     # ##### PARAMETERS ######    
 
@@ -441,22 +537,25 @@ if __name__ == "__main__":
     # print('device :',device)
     # loader = dataloaders[0]
 
-    # # network = SiameseNetwork([2, 250, 250], device)
+    # network = SiameseNetwork([2, 250, 250], device)
 
-    # # optimizer = optim.SGD(network.parameters(), lr=lr)
-    # #optimizer = optim.Adam(network.parameters(), lr=lr)
+    # optimizer = optim.SGD(network.parameters(), lr=lr)
+    # optimizer = optim.Adam(network.parameters(), lr=lr)
     # loader = dataloaders[0]
-    # # network.to(device)
+    # network.to(device)
 
     # ##### TRAINING #####
     # for epoch in range(epochs):
     #     train(epoch, network, loader, optimizer, device)
 
+    # torch.save(network, "./model.torch")
+
     # test(network, dataloaders[0], optimizer, device, set_='train')
 
     # test(network, dataloaders[1], optimizer, device, set_='test')
+    
 
-    """### GridSearch"""
+    # """### GridSearch"""
 
     def grid_search(batch_size_list, epochs_list, lr_list, path_input, 
                     path_csv_output, size_split, size_picture):
@@ -482,12 +581,12 @@ if __name__ == "__main__":
                     print('Working on model = ', ' batch size: '+str(batch_size)+' epochs: '+str(epochs) +' lr: '+str(lr))
                     print(size_picture, device)
                     network = SiameseNetwork(size_picture, device).to(device)
-
+                    torch.save(network, "./model.torch")
                     optimizer = optim.SGD(network.parameters(), lr=lr)
 
                     ##### TRAINING #####
                     for epoch in range(epochs):
-                        train(epoch, network, train_loader, optimizer, device)
+                        loss = train(epoch, network, train_loader, optimizer, device) #TODO: loss final après entrainement à stocker
                         
                     dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]= [test(network, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]
                     print(output)
@@ -501,7 +600,8 @@ if __name__ == "__main__":
 
 
 
-    print(grid_search([20, 30, 50, 70], [20, 35, 50], [0.1, 0.05], data, 
-                    './output.csv', [0.95, 0.05], [2, 250, 250]))
+    # print(grid_search([20], [20], [0.1], photos, 
+    #                 './output.csv', [0.95, 0.05], [2, 250, 250]))
 
-
+    print(grid_search([1], [1], [0.1], photos, 
+                    data_photos, [0.95, 0.05], [2, 250, 250]))
