@@ -497,7 +497,7 @@ def test(network, loader, optimizer, device, set_):
         target = target.to(device)
         target_int = torch.flatten(target, start_dim=0)
 
-        output = network(data)
+        output = network(data) #TODO: split in smaller batch https://discuss.pytorch.org/t/how-to-fix-runtimeerror-cuda-out-of-memory/106818
         test_loss += F.cross_entropy(output, target_int)
 
         pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability

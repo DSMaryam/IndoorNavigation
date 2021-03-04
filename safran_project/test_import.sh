@@ -5,9 +5,10 @@
 #SBATCH --time=5:00:00 
 #SBATCH --ntasks=1 
 # SBATCH --partition=cpu_med
-#SBATCH --mem=10GB
+#SBATCH --mem=100GB
 #SBATCH --mail-user=geoffroy.dunoyer@student.ecp.fr
-#SBATCH --gres=gpu:1
+#SBATCH --mail-type=END
+#SBATCH --gres=gpu:2
 #SBATCH --partition=gpu
 
 
