@@ -432,6 +432,7 @@ class SiameseNetwork(nn.Module):
         
 
     def forward(self,x):
+        # print("mem free: {} Mb".format(get_gpu_memory(self.cuda_id)))
         #print('in', x.shape)
         x = x.float()
         #layer 1
@@ -498,10 +499,10 @@ def test(network, loader, optimizer, device, set_):
         target_int = torch.flatten(target, start_dim=0)
 
         output = network(data) #TODO: split in smaller batch https://discuss.pytorch.org/t/how-to-fix-runtimeerror-cuda-out-of-memory/106818
-        test_loss += F.cross_entropy(output, target_int)
+        test_loss += F.cross_entropy(output, target_int).item()
 
         pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
-        print(pred)
+        # print(pred)
         correct += pred.eq(target_int.data.view_as(pred)).cpu().sum()
 
     test_loss /= len(loader.dataset)
