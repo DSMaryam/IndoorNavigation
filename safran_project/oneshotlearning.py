@@ -509,7 +509,19 @@ def test(network, loader, optimizer, device, set_):
     print('\n '+set_+ ' set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, len(loader.dataset),
         100. * correct / (len(loader.dataset))))
-    return(100. * correct / (len(loader.dataset)))
+    return test_loss , 100. * correct / (len(loader.dataset))
+
+def network_snapshot(network,optimizer,path,epoch,loss,losses,epochs,batch_size,lr):
+      torch.save({
+            'epoch': epoch,
+            'model_state_dict': network.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': loss,
+            'batch_size' : batch_size,
+            'lr' : lr,
+            'epochs' : epochs,
+            'losses' : losses
+            }, path)
 
 """#### Execution"""
 
@@ -562,6 +574,7 @@ if __name__ == "__main__":
                     path_csv_output, size_split, size_picture):
 
         ##### INITIALIZATION ######   
+        df_results = pd.DataFrame(columns=['batch_size', 'epochs', 'lr', 'acc_train', 'acc_test', 'loss_test'])
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # device = "cpu"
         print('device :',device)
@@ -587,12 +600,22 @@ if __name__ == "__main__":
 
                     ##### TRAINING #####
                     for epoch in range(epochs):
-                        loss = train(epoch, network, train_loader, optimizer, device) #TODO: loss final après entrainement à stocker
-                        
-                    dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]= [test(network, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]
+                        acc_train = train(epoch, network, train_loader, optimizer, device) #TODO: loss final après entrainement à stocker
+                        # ajoute de la ligne pour la snapshot
+                        if epoch%50==0:
+                            file = '/gpfs/workdir/dunoyerg/snapshot/' + 'snapshot'+'_'+str(batch_size)+'_'+str(epoch)+'_'+str(lr)+'_'++'.pt'
+                            network_snapshot(network,optimizer,file,epoch,loss,losses,epochs_list,batch_size,lr)
+                    f.open("results.csv")
+                    f.write(batch_size+','+ ',' +epochs+','+ lr+','+ +','+ acc_test+','+ test_loss)
+                    f.close()
+                    # df_results.append(pd.DataFrame(data=[batch_size, epochs, lr, , acc_test, test_loss],columns=['batch_size', 'epochs', 'lr', 'acc_train', 'acc_test', 'loss_test']))
+                    
+                    test_1=[test(network, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]                        
+                    # df_results.append(pd.DataFrame(data=[batch_size, epochs, lr, , acc_test, test_loss],columns=['batch_size', 'epochs', 'lr', 'acc_train', 'acc_test', 'loss_test']))
+                    dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]= test_1
                     print(output)
                     # torch.save(network.state_dict(), output + 'model'+str(batch_size)+str(epochs)+str(lr)+'.pt')
-                    torch.save(network.state_dict(), '/gpfs/workdir/dunoyerg/models/' + 'model'+str(batch_size)+str(epochs)+str(lr)+'.pt')
+                    torch.save(network.state_dict(), '/gpfs/workdir/dunoyerg/models/' + 'model'+'_'+str(batch_size)+'_'+str(epochs)+'_'+str(lr)+'.pt')
                     
                     del network
                     print('________________________________________')
@@ -604,5 +627,5 @@ if __name__ == "__main__":
     # print(grid_search([20], [20], [0.1], photos, 
     #                 './output.csv', [0.95, 0.05], [2, 250, 250]))
 
-    print(grid_search([1], [1], [0.1], photos, 
+    print(grid_search([10, 20, 50], [20], [1, 0.1, 0.001, 0.0001], photos, 
                     data_photos, [0.95, 0.05], [2, 250, 250]))
