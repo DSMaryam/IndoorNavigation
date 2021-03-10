@@ -191,7 +191,7 @@ class CustomDataset(Dataset):
 
               #false pairs
 
-              filenames_int_not_i = list(df_output[df_output['class'] != class_i].values)
+              filenames_int_not_i = list(df_output[df_output['class'] != class_i]['path'].values)
               shuffle(filenames_int_not_i)
               nbr_false_to_keep = min(len(filenames_int_not_i) , int(len(add_pairs) *self.ratio))
               #print(nbr_false_to_keep)
@@ -214,8 +214,8 @@ class CustomDataset(Dataset):
         
 
         landmarks = [self.landmarks[idx]]
-        image1 = plt.imread(self.folder_inputs+self.inputs[idx][0])
-        image2 = plt.imread(self.folder_inputs+self.inputs[idx][1])
+        image1 = plt.imread(self.folder_inputs+str(self.inputs[idx][0]))
+        image2 = plt.imread(self.folder_inputs+str(self.inputs[idx][1]))
         pair = np.zeros([image2.shape[0], image2.shape[1], image2.shape[2]*2])  # 2 is for pairs
         pair[:,:,0] = image1[:,:,0]
         pair[:,:,1] = image1[:,:,1]
@@ -407,14 +407,24 @@ def grid_search(batch_size_list, epochs_list, lr_list, path_input,
             network = SiameseNetwork(size_picture, device).to(device)
 
             optimizer = optim.SGD(network.parameters(), lr=lr)
-
+            losses = []
             ##### TRAINING #####
             for epoch in range(epochs):
-                train(epoch, network, train_loader, optimizer, device)
-                
-            dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]= [test(network, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]
+                train_loss = train(epoch, network, train_loader, optimizer, device)
+                losses +=[train_loss]
+                if epoch%10==0:
+                    file_snapshot = '/gpfs/workdir/dunoyerg/snapshot/' + 'snapshot'+'_'+str(batch_size)+'_'+str(epoch)+'_'+str(lr)+'_'+'.pt'
+                    network_snapshot(network,optimizer,file_snapshot,epoch,train_loss, losses,epochs_list,batch_size,lr)
+            if epochs%10!=0:
+                file_snapshot = '/gpfs/workdir/dunoyerg/snapshot/' + 'snapshot'+'_'+str(batch_size)+'_'+str(epoch)+'_'+str(lr)+'_'+'.pt'
+                network_snapshot(network,optimizer,file_snapshot,epoch,train_loss, losses,epochs_list,batch_size,lr)
+                    
             
-            torch.save(network.state_dict(), './models/model'+str(batch_size)+str(epochs)+str(lr)+'.pt')
+            dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]= [test(network, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]
+            f = open("results.csv", "a")
+            f.write(str(batch_size)+';'+str(epochs)+';'+ str(lr) + ';' + ''.join([str(elem) for elem in dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]])+"\n")
+            f.close()
+            torch.save(network.state_dict(), '/gpfs/workdir/dunoyerg/models/' +'/model'+str(batch_size)+str(epochs)+str(lr)+'.pt')
             del network
             print('________________________________________')
 
@@ -442,19 +452,20 @@ if __name__ == "__main__":
     path_input = os.path.abspath(sys.argv[1])+"/"
     # path_csv_output =  './output.csv'
     path_csv_output = os.path.abspath(sys.argv[2])
+    print(path_csv_output, path_input)
     #grid search parameters
-    # batch_size_list = [10,20,50,100]
-    # epochs_list = [25, 50, 75, 100]
-    # lr_list = [1, 0.1, 0.01, 0.001]
-    # size_split =  [0.95, 0.05]
-    # size_picture = [6,250, 250]
-    # ratio=0
-    batch_size_list = [1]
-    epochs_list = [1]
-    lr_list = [1]
+    batch_size_list = [10,20,50,100]
+    epochs_list = [25, 50, 75, 100]
+    lr_list = [1, 0.1, 0.01, 0.001]
     size_split =  [0.95, 0.05]
     size_picture = [6,250, 250]
     ratio=3
+    # batch_size_list = [1]
+    # epochs_list = [1]
+    # lr_list = [1]
+    # size_split =  [0.95, 0.05]
+    # size_picture = [6,250, 250]
+    # ratio=3
 
     ## main 
     grid_search(batch_size_list, epochs_list, lr_list, path_input, path_csv_output, size_split, size_picture, ratio)
