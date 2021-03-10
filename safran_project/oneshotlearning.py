@@ -597,22 +597,24 @@ if __name__ == "__main__":
                     network = SiameseNetwork(size_picture, device).to(device)
                     torch.save(network, "./model.torch")
                     optimizer = optim.SGD(network.parameters(), lr=lr)
-
+                    losses = []
                     ##### TRAINING #####
                     for epoch in range(epochs):
-                        acc_train = train(epoch, network, train_loader, optimizer, device) #TODO: loss final après entrainement à stocker
+                        train_loss = train(epoch, network, train_loader, optimizer, device) #TODO: loss final après entrainement à stocker
                         # ajoute de la ligne pour la snapshot
+                        losses += [train_loss]
                         if epoch%50==0:
-                            file = '/gpfs/workdir/dunoyerg/snapshot/' + 'snapshot'+'_'+str(batch_size)+'_'+str(epoch)+'_'+str(lr)+'_'++'.pt'
-                            network_snapshot(network,optimizer,file,epoch,loss,losses,epochs_list,batch_size,lr)
-                    f.open("results.csv")
-                    f.write(batch_size+','+ ',' +epochs+','+ lr+','+ +','+ acc_test+','+ test_loss)
+                            file_snapshot = '/gpfs/workdir/dunoyerg/snapshot/' + 'snapshot'+'_'+str(batch_size)+'_'+str(epoch)+'_'+str(lr)+'_'+'.pt'
+                            network_snapshot(network,optimizer,file_snapshot,epoch,train_loss, losses,epochs_list,batch_size,lr)
+                    f = open("results.csv", "a")
+                    f.write(batch_size+','+ ',' +epochs+','+ lr+',' +','+ acc_test+','+ test_loss)
                     f.close()
                     # df_results.append(pd.DataFrame(data=[batch_size, epochs, lr, , acc_test, test_loss],columns=['batch_size', 'epochs', 'lr', 'acc_train', 'acc_test', 'loss_test']))
                     
-                    test_1=[test(network, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]                        
-                    # df_results.append(pd.DataFrame(data=[batch_size, epochs, lr, , acc_test, test_loss],columns=['batch_size', 'epochs', 'lr', 'acc_train', 'acc_test', 'loss_test']))
-                    dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]= test_1
+                    dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]= [test(network, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]
+                    f = open("results.csv", "a")
+                    f.write(str(batch_size)+';'+str(epochs)+';'+ str(lr) + ';' + ''.join([str(elem) for elem in dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]])+"\n")
+                    f.close()
                     print(output)
                     # torch.save(network.state_dict(), output + 'model'+str(batch_size)+str(epochs)+str(lr)+'.pt')
                     torch.save(network.state_dict(), '/gpfs/workdir/dunoyerg/models/' + 'model'+'_'+str(batch_size)+'_'+str(epochs)+'_'+str(lr)+'.pt')

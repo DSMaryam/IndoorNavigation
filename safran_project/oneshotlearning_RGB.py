@@ -170,24 +170,37 @@ class CustomDataset(Dataset):
       pairs = []
       output = []
       
-      df_output = self.data_output
+      df_output = self.data_output.iloc[self.list_indexes, :]
       filenames = df_output['path'].values
-      for i in range(len(filenames)):
-        for j in range(i+1, len(filenames)):
-            if len(set(df_output[(df_output['path'] == filenames[i]) | (df_output['path'] == filenames[j])]['class'].values))==1:
-              output.append(1)
-            else: 
-              output.append(0)
-            pairs.append([filenames[i], filenames[j]])
-      
-      if self.ratio !=0:
-              indices_false = [i for i in range(len(output)) if output[i] == 0]
-              indices_true = [i for i in range(len(output)) if output[i] == 1]
-              shuffle(indices_false)
-              indices_to_keep = indices_false[0:int(len(indices_true)*self.ratio)]+indices_true
 
-              return([pairs[i] for i in range(len(pairs)) if i in indices_to_keep],
-              [output[i] for i in range(len(output)) if i in indices_to_keep])
+      for filename in filenames:
+          class_i = df_output[df_output['path'] == filename]['class'].values[0]
+
+          # true pairs
+          filenames_int_i = df_output[df_output['class'] == class_i]['path'].values
+          add_pairs = [[filename, filename_2] for filename_2 in filenames_int_i if filename!=filename_2]
+          #print('__________________________')
+          #print('new pairs: ', len(add_pairs))
+
+          if len(add_pairs)!=0:
+              pairs += add_pairs
+              output += [1 for i in range(len(add_pairs))]
+
+              #print('pairs: ', len(pairs))
+              #print('output: ', len(output))
+
+              #false pairs
+
+              filenames_int_not_i = list(df_output[df_output['class'] != class_i].values)
+              shuffle(filenames_int_not_i)
+              nbr_false_to_keep = min(len(filenames_int_not_i) , int(len(add_pairs) *self.ratio))
+              #print(nbr_false_to_keep)
+              filenames_int_not_i = filenames_int_not_i[:nbr_false_to_keep]
+              pairs += [[filename, filename_2] for filename_2 in filenames_int_not_i]
+              output += [1 for i in range(nbr_false_to_keep)]
+
+              #print('pairs: ', len(pairs))
+              #print('output: ', len(output))
 
       return(pairs, output)
 
@@ -232,7 +245,7 @@ def train_split_dataset(folder_inputs,path_csv,ratio=0, transform=None,size_spli
 
       train_indexes = list_indexes[0: int(size_split[0]*len(list_indexes))]
       test_indexes = list_indexes[int(size_split[0]*len(list_indexes)):]
-
+      print(folder_inputs,path_csv,train_indexes,ratio, transform)
       train_dataset = CustomDataset(folder_inputs,path_csv,train_indexes,ratio, transform, True)
       print(len(train_dataset))
       test_dataset = CustomDataset(folder_inputs,path_csv,test_indexes,ratio, transform, False)
@@ -257,7 +270,7 @@ def get_dataloaders(folder_inputs,path_csv, batch_size,ratio=0,  transform=None,
 """
 
 class SiameseNetwork(nn.Module):
-    def __init__(self, image_size):
+    def __init__(self, image_size, device):
         super(SiameseNetwork, self).__init__()
         self.image_size = image_size
         self.device = device
@@ -342,7 +355,7 @@ def train(epoch, network, loader, optimizer, device):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(loader.dataset),
                 100. * batch_idx / len(loader), loss.item()))
-        return loss.item()
+    return loss.item()
 
 def test(network, loader, optimizer, device, set_):
     network.eval()
@@ -369,48 +382,43 @@ def test(network, loader, optimizer, device, set_):
 """### GridSearch OSL"""
 
 def grid_search(batch_size_list, epochs_list, lr_list, path_input, 
-                path_csv_output, size_split, size_picture, ratio=0):
+                path_csv_output, size_split, size_picture, ratio=1):
 
       ##### INITIALIZATION ######   
       device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
       #device = "cpu"
       print('device :',device)
       dict_results = {}
+      
+      data_transform = transforms.Compose([transforms.ToTensor()])
+      datasets = train_split_dataset(path_input,path_csv_output,ratio, data_transform,size_split, False)
 
       print('##############################')
       for batch_size in batch_size_list:
 
-        data_transform = transforms.Compose([transforms.ToTensor()])
-        dataloaders = get_dataloaders(path_input,path_csv_output, batch_size,ratio, data_transform, size_split, False)
-
-        train_loader, test_loader = dataloaders[0], dataloaders[1]
+        train_loader = torch.utils.data.DataLoader(datasets[0], batch_size=batch_size, shuffle=True, num_workers=0)
+        test_loader = torch.utils.data.DataLoader(datasets[1], batch_size=batch_size, shuffle=True, num_workers=0)
 
         for epochs in epochs_list:
           for lr in lr_list:
             #torch.cuda.empty_cache()
 
             print('Working on model = ', ' batch size: '+str(batch_size)+' epochs: '+str(epochs) +' lr: '+str(lr))
-            network = SiameseNetwork(size_picture).to(device)
+            network = SiameseNetwork(size_picture, device).to(device)
 
             optimizer = optim.SGD(network.parameters(), lr=lr)
 
             ##### TRAINING #####
             for epoch in range(epochs):
-                train_loss = train(epoch, network, train_loader, optimizer, device)
-                if epoch%50==0:
-                    file_snapshot = '/gpfs/workdir/dunoyerg/snapshot/' + 'snapshot'+'_'+str(batch_size)+'_'+str(epoch)+'_'+str(lr)+'_'++'.pt'
-                    network_snapshot(network,optimizer,file_snapshot,epoch,loss,losses,epochs_list,batch_size,lr)
-                    
+                train(epoch, network, train_loader, optimizer, device)
+                
             dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]= [test(network, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]
-            f.open("results.csv")
-            f.write(str(batch_size)+';'+str(epochs)+';'+ str(lr) + ';' + dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]+"\n")
-            f.close()
+            
             torch.save(network.state_dict(), './models/model'+str(batch_size)+str(epochs)+str(lr)+'.pt')
             del network
             print('________________________________________')
 
       return(dict_results)
-
 
 """### Net work snapshot """
 
@@ -435,18 +443,18 @@ if __name__ == "__main__":
     # path_csv_output =  './output.csv'
     path_csv_output = os.path.abspath(sys.argv[2])
     #grid search parameters
-    batch_size_list = [10,20,50,100]
-    epochs_list = [25, 50, 75, 100]
-    lr_list = [1, 0.1, 0.01, 0.001]
-    size_split =  [0.95, 0.05]
-    size_picture = [6,250, 250]
-    ratio=0
+    # batch_size_list = [10,20,50,100]
+    # epochs_list = [25, 50, 75, 100]
+    # lr_list = [1, 0.1, 0.01, 0.001]
+    # size_split =  [0.95, 0.05]
+    # size_picture = [6,250, 250]
+    # ratio=0
     batch_size_list = [1]
     epochs_list = [1]
     lr_list = [1]
     size_split =  [0.95, 0.05]
     size_picture = [6,250, 250]
-    ratio=0
+    ratio=3
 
     ## main 
     grid_search(batch_size_list, epochs_list, lr_list, path_input, path_csv_output, size_split, size_picture, ratio)

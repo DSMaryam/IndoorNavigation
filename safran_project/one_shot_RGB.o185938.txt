@@ -1,0 +1,13 @@
+device : cuda:0
+##############################
+7922
+253
+Working on model =   batch size: 1 epochs: 1 lr: 1
+Train Epoch: 0 [0/7922 (0%)]	Loss: 0.355736
+
+ train set: Average loss: 0.8133, Accuracy: 3961/7922 (50%)
+
+
+ test set: Average loss: 1.2698, Accuracy: 11/253 (4%)
+
+________________________________________

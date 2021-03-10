@@ -1,0 +1,109 @@
+device : cuda:0
+/gpfs/workdir/dunoyerg/temp_data/ /gpfs/users/dunoyerg/navigation_indoor_safran/safran_project/output.csv [226, 305, 257, 304, 338, 223, 409, 193, 106, 83, 333, 186, 21, 318, 212, 58, 179, 279, 180, 133, 439, 10, 98, 38, 253, 254, 296, 386, 95, 0, 20, 363, 188, 44, 411, 348, 5, 322, 107, 295, 115, 57, 244, 73, 110, 400, 229, 401, 425, 190, 420, 327, 378, 37, 301, 59, 408, 211, 183, 364, 170, 258, 159, 210, 182, 140, 93, 324, 344, 151, 437, 80, 4, 189, 128, 206, 163, 94, 349, 169, 123, 85, 103, 399, 42, 9, 406, 246, 248, 250, 291, 247, 359, 181, 55, 331, 430, 19, 376, 162, 177, 239, 16, 82, 373, 429, 299, 1, 238, 119, 88, 227, 144, 342, 427, 423, 243, 245, 3, 383, 332, 204, 142, 139, 172, 436, 187, 22, 50, 201, 69, 135, 426, 18, 39, 233, 312, 391, 79, 60, 309, 341, 52, 35, 129, 89, 371, 160, 32, 298, 374, 434, 77, 358, 116, 100, 432, 53, 30, 205, 143, 388, 81, 25, 419, 131, 157, 158, 208, 174, 403, 326, 112, 138, 49, 125, 41, 114, 413, 168, 191, 178, 402, 209, 290, 328, 335, 266, 278, 397, 380, 198, 199, 121, 265, 26, 440, 43, 28, 166, 54, 200, 234, 31, 97, 29, 216, 75, 156, 235, 395, 126, 242, 337, 307, 8, 315, 231, 308, 377, 351, 272, 96, 219, 370, 345, 213, 325, 347, 61, 416, 87, 34, 15, 153, 356, 276, 385, 249, 92, 340, 152, 36, 84, 99, 256, 405, 357, 294, 410, 367, 293, 176, 313, 282, 62, 361, 237, 267, 334, 372, 438, 109, 141, 46, 389, 134, 65, 12, 127, 196, 108, 155, 435, 47, 24, 120, 195, 346, 268, 415, 91, 355, 222, 288, 240, 236, 228, 398, 64, 27, 23, 217, 319, 252, 76, 352, 270, 343, 353, 203, 66, 281, 417, 192, 17, 113, 136, 45, 302, 232, 379, 241, 74, 286, 7, 274, 102, 381, 259, 323, 433, 132, 321, 72, 414, 146, 412, 431, 207, 339, 289, 269, 214, 122, 104, 392, 218, 215, 424, 184, 137, 154, 70, 292, 130, 225, 404, 384, 303, 255, 111, 277, 145, 262, 311, 263, 68, 264, 273, 284, 161, 71, 428, 251, 51, 230, 366, 6, 220, 336, 165, 365, 78, 306, 175, 418, 387, 390, 396, 275, 11, 63, 194, 300, 329, 368, 90, 67, 118, 33, 350, 354, 369, 224, 13, 185, 375, 297, 287, 117, 407, 360, 394, 393, 56, 40, 330, 422, 202, 310, 124, 14, 150, 271, 148, 164, 421] 3 Compose(
+    ToTensor()
+)
+7924
+96
+##############################
+Working on model =   batch size: 1 epochs: 1 lr: 1
+Train Epoch: 0 [0/7924 (0%)]	Loss: 0.439421
+Train Epoch: 0 [100/7924 (1%)]	Loss: 1.313262
+Train Epoch: 0 [200/7924 (3%)]	Loss: 0.313262
+Train Epoch: 0 [300/7924 (4%)]	Loss: 1.313262
+Train Epoch: 0 [400/7924 (5%)]	Loss: 1.313262
+Train Epoch: 0 [500/7924 (6%)]	Loss: 1.313262
+Train Epoch: 0 [600/7924 (8%)]	Loss: 1.313262
+Train Epoch: 0 [700/7924 (9%)]	Loss: 1.313262
+Train Epoch: 0 [800/7924 (10%)]	Loss: 1.313262
+Train Epoch: 0 [900/7924 (11%)]	Loss: 0.313262
+Train Epoch: 0 [1000/7924 (13%)]	Loss: 0.313262
+Train Epoch: 0 [1100/7924 (14%)]	Loss: 0.313262
+Train Epoch: 0 [1200/7924 (15%)]	Loss: 0.313262
+Train Epoch: 0 [1300/7924 (16%)]	Loss: 1.313262
+Train Epoch: 0 [1400/7924 (18%)]	Loss: 1.313262
+Train Epoch: 0 [1500/7924 (19%)]	Loss: 1.313262
+Train Epoch: 0 [1600/7924 (20%)]	Loss: 1.313262
+Train Epoch: 0 [1700/7924 (21%)]	Loss: 0.313262
+Train Epoch: 0 [1800/7924 (23%)]	Loss: 1.313262
+Train Epoch: 0 [1900/7924 (24%)]	Loss: 0.313262
+Train Epoch: 0 [2000/7924 (25%)]	Loss: 1.313262
+Train Epoch: 0 [2100/7924 (27%)]	Loss: 0.313262
+Train Epoch: 0 [2200/7924 (28%)]	Loss: 1.313262
+Train Epoch: 0 [2300/7924 (29%)]	Loss: 1.313262
+Train Epoch: 0 [2400/7924 (30%)]	Loss: 1.313262
+Train Epoch: 0 [2500/7924 (32%)]	Loss: 0.313262
+Train Epoch: 0 [2600/7924 (33%)]	Loss: 1.313262
+Train Epoch: 0 [2700/7924 (34%)]	Loss: 1.313262
+Train Epoch: 0 [2800/7924 (35%)]	Loss: 0.313262
+Train Epoch: 0 [2900/7924 (37%)]	Loss: 0.313262
+Train Epoch: 0 [3000/7924 (38%)]	Loss: 0.313262
+Train Epoch: 0 [3100/7924 (39%)]	Loss: 0.313262
+Train Epoch: 0 [3200/7924 (40%)]	Loss: 0.313262
+Train Epoch: 0 [3300/7924 (42%)]	Loss: 0.313262
+Train Epoch: 0 [3400/7924 (43%)]	Loss: 0.313262
+Train Epoch: 0 [3500/7924 (44%)]	Loss: 1.313262
+Train Epoch: 0 [3600/7924 (45%)]	Loss: 1.313262
+Train Epoch: 0 [3700/7924 (47%)]	Loss: 1.313262
+Train Epoch: 0 [3800/7924 (48%)]	Loss: 1.313262
+Train Epoch: 0 [3900/7924 (49%)]	Loss: 0.313262
+Train Epoch: 0 [4000/7924 (50%)]	Loss: 0.313262
+Train Epoch: 0 [4100/7924 (52%)]	Loss: 1.313262
+Train Epoch: 0 [4200/7924 (53%)]	Loss: 1.313262
+Train Epoch: 0 [4300/7924 (54%)]	Loss: 0.313262
+Train Epoch: 0 [4400/7924 (56%)]	Loss: 1.313262
+Train Epoch: 0 [4500/7924 (57%)]	Loss: 0.313262
+Train Epoch: 0 [4600/7924 (58%)]	Loss: 0.313262
+Train Epoch: 0 [4700/7924 (59%)]	Loss: 1.313262
+Train Epoch: 0 [4800/7924 (61%)]	Loss: 1.313262
+Train Epoch: 0 [4900/7924 (62%)]	Loss: 1.313262
+Train Epoch: 0 [5000/7924 (63%)]	Loss: 0.313262
+Train Epoch: 0 [5100/7924 (64%)]	Loss: 0.313262
+Train Epoch: 0 [5200/7924 (66%)]	Loss: 0.313262
+Train Epoch: 0 [5300/7924 (67%)]	Loss: 0.313262
+Train Epoch: 0 [5400/7924 (68%)]	Loss: 0.313262
+Train Epoch: 0 [5500/7924 (69%)]	Loss: 0.313262
+Train Epoch: 0 [5600/7924 (71%)]	Loss: 1.313262
+Train Epoch: 0 [5700/7924 (72%)]	Loss: 1.313262
+Train Epoch: 0 [5800/7924 (73%)]	Loss: 1.313262
+Train Epoch: 0 [5900/7924 (74%)]	Loss: 0.313262
+Train Epoch: 0 [6000/7924 (76%)]	Loss: 1.313262
+Train Epoch: 0 [6100/7924 (77%)]	Loss: 1.313262
+Train Epoch: 0 [6200/7924 (78%)]	Loss: 1.313262
+Train Epoch: 0 [6300/7924 (80%)]	Loss: 0.313262
+Train Epoch: 0 [6400/7924 (81%)]	Loss: 0.313262
+Train Epoch: 0 [6500/7924 (82%)]	Loss: 0.313262
+Train Epoch: 0 [6600/7924 (83%)]	Loss: 1.313262
+Train Epoch: 0 [6700/7924 (85%)]	Loss: 1.313262
+Train Epoch: 0 [6800/7924 (86%)]	Loss: 1.313262
+Train Epoch: 0 [6900/7924 (87%)]	Loss: 0.313262
+Train Epoch: 0 [7000/7924 (88%)]	Loss: 1.313262
+Train Epoch: 0 [7100/7924 (90%)]	Loss: 0.313262
+Train Epoch: 0 [7200/7924 (91%)]	Loss: 0.313262
+Train Epoch: 0 [7300/7924 (92%)]	Loss: 0.313262
+Train Epoch: 0 [7400/7924 (93%)]	Loss: 0.313262
+Train Epoch: 0 [7500/7924 (95%)]	Loss: 0.313262
+Train Epoch: 0 [7600/7924 (96%)]	Loss: 0.313262
+Train Epoch: 0 [7700/7924 (97%)]	Loss: 0.313262
+Train Epoch: 0 [7800/7924 (98%)]	Loss: 0.313262
+Train Epoch: 0 [7900/7924 (100%)]	Loss: 1.313262
+
+ train set: Average loss: 0.8133, Accuracy: 3962/7924 (50%)
+
+Traceback (most recent call last):
+  File "oneshotlearning_RGB.py", line 460, in <module>
+    grid_search(batch_size_list, epochs_list, lr_list, path_input, path_csv_output, size_split, size_picture, ratio)
+  File "oneshotlearning_RGB.py", line 415, in grid_search
+    dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]= [test(network, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]
+  File "oneshotlearning_RGB.py", line 365, in test
+    for batch_idx, (data, target) in enumerate(loader):
+  File "/gpfs/users/dunoyerg/.conda/envs/cifar10/lib/python3.8/site-packages/torch/utils/data/dataloader.py", line 435, in __next__
+    data = self._next_data()
+  File "/gpfs/users/dunoyerg/.conda/envs/cifar10/lib/python3.8/site-packages/torch/utils/data/dataloader.py", line 475, in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+  File "/gpfs/users/dunoyerg/.conda/envs/cifar10/lib/python3.8/site-packages/torch/utils/data/_utils/fetch.py", line 44, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/gpfs/users/dunoyerg/.conda/envs/cifar10/lib/python3.8/site-packages/torch/utils/data/_utils/fetch.py", line 44, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "oneshotlearning_RGB.py", line 218, in __getitem__
+    image2 = plt.imread(self.folder_inputs+self.inputs[idx][1])
+TypeError: can only concatenate str (not "int") to str

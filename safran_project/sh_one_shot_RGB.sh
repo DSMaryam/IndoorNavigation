@@ -2,13 +2,14 @@
 
 #SBATCH --job-name=one_shot_RGB
 #SBATCH --output=%x.o%j.txt
-#SBATCH --time=24:00:00 
-#SBATCH --ntasks=1 
+#SBATCH --time=1:00:00 
+#SBATCH --ntasks=4
+#SBATCH --nodes=1
 #SBATCH --mem=700GB
 #SBATCH --mail-user=geoffroy.dunoyer@student.ecp.fr
 #SBATCH --mail-type=END
 #SBATCH --gres=gpu:4
-#SBATCH --partition=gpu
+#SBATCH --partition=gpu_test
 
 
 # Load necessary modules
@@ -21,7 +22,5 @@ source activate cifar10
 
 # Run python script
 # python3 test_import.py
-python3 oneshotlearning_RGB.py $WORKDIR/photos_apprentissage_visage $WORKDIR/output_faces.csv $WORKDIR/photos_apprentissage_visage
-# python3 oneshotlearning.py $WORKDIR/apprentissage $WORKDIR/output.csv $WORKDIR/temp_data
-# curl --ntlm --user geoffroy.dunoyer@student.ecp.fr:G$3af0c\!ECP --upload-file output.csv https://centralesupelec.sharepoint.com/sites/Projetinfonum12/output.csv
-# curl --ntlm --user geoffroy.dunoyer@student.ecp.fr:G$3af0c\!ECP --upload-file output.csv https://teams.microsoft.com/_#/school/files/G%C3%A9n%C3%A9ral?threadId=19%3A30cd1d3075f048c3a94a94dc90899d41%40thread.tacv2&ctx=channel&context=General&rootfolder=%252Fsites%252FProjetinfonum12%252FDocuments%2520partages%252FGeneral/output.csv
+# python3 oneshotlearning_RGB.py $WORKDIR/photos_apprentissage_visage $WORKDIR/output_faces.csv
+python3 oneshotlearning_RGB.py $WORKDIR/temp_data ./output.csv $WORKDIR/temp_data
