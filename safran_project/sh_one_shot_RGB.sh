@@ -2,14 +2,14 @@
 
 #SBATCH --job-name=one_shot_RGB
 #SBATCH --output=%x.o%j.txt
-#SBATCH --time=10:00:00 
+#SBATCH --time=00:20:00 
 #SBATCH --ntasks=4
-# SBATCH --nodes=2
+#SBATCH --nodes=1
 #SBATCH --mem=100GB
 #SBATCH --mail-user=geoffroy.dunoyer@student.ecp.fr
 #SBATCH --mail-type=END
 # SBATCH --gres=gpu:4
-#SBATCH --partition=cpu_long
+#SBATCH --partition=cpu_short
 
 
 # Load necessary modules
@@ -22,5 +22,5 @@ source activate cifar10
 
 # Run python script
 # python3 test_import.py
-# python3 oneshotlearning_RGB.py $WORKDIR/photos_apprentissage_visage $WORKDIR/output_faces.csv
-python3 oneshotlearning_RGB.py $WORKDIR/temp_data ./output.csv
+# python3 oneshotlearning_RGB.py $WORKDIR/photos_apprentissage_visage_rgb $WORKDIR/output_faces_rgb.csv $WORKDIR/output_print/faces_${SLURM_JOBID}.csv
+python3 oneshotlearning_RGB.py $WORKDIR/temp_data ./output.csv $WORKDIR/output_print/indoor_${SLURM_JOBID}.csv

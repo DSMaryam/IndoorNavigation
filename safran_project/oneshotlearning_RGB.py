@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import random 
 from random import randint, shuffle
+import time
 
 #data augmentation imports
 from skimage import data
@@ -32,6 +33,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.autograd import Variable
 from torch.utils.data import Dataset
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 # generate random integer values
 """### Preprocessing of the Data
@@ -85,21 +87,29 @@ def transform_data(input_path, path_output,path_output_csv, new_size,  rgb=True,
   r=0
   j=0
   for folder in os.listdir(input_path):
-      print("___________________")
-      print(folder)
+      f=open(path_csv_results.replace('csv','txt'), 'a')
+      f.write("___________________"+"\n")
+      f.write(folder)
+      f.close()
       
       for imgname in os.listdir(input_path+folder):
-          print("- - - - - - - - - - - - -")
-          print(imgname)
+          f=open(path_csv_results.replace('csv','txt'), 'a')
+          f.write("- - - - - - - - - - - - -"+"\n")
+          f.write(imgname)
+          f.close()
 
           #path_picture = "/point_"+str(int_)+"_caption_"+str(j)
           #os.mkdir(path_output+path_picture)
           
           original_image = plt.imread(input_path+folder+'/'+imgname)
-          print(original_image.shape)
+          f=open(path_csv_results.replace('csv','txt'), 'a')
+          f.write(str(original_image.shape)+"\n")
+          f.close()
           images = data_augmentation(original_image, new_size, rgb)
           original_image=True
-          print(images[2].shape)
+          f=open(path_csv_results.replace('csv','txt'), 'a')
+          f.write(str(images[2].shape)+"\n")
+          f.close()
           for image in images:
             image_to_save = make_square(image,  new_size)
             r+=1
@@ -123,7 +133,7 @@ def transform_data(input_path, path_output,path_output_csv, new_size,  rgb=True,
 class CustomDataset(Dataset):
     """Segmentation & Classification dataset."""
 
-    def __init__(self, folder_inputs,path_csv,list_indexes,ratio=0, transform=None, train=True):
+    def __init__(self, folder_inputs,path_csv,list_indexes,ratio, transform=None, train=True):
         """
         Args:
             folder_outputs (string): Path to the folder with.
@@ -197,7 +207,7 @@ class CustomDataset(Dataset):
               #print(nbr_false_to_keep)
               filenames_int_not_i = filenames_int_not_i[:nbr_false_to_keep]
               pairs += [[filename, filename_2] for filename_2 in filenames_int_not_i]
-              output += [1 for i in range(nbr_false_to_keep)]
+              output += [0 for i in range(nbr_false_to_keep)]
 
               #print('pairs: ', len(pairs))
               #print('output: ', len(output))
@@ -233,7 +243,7 @@ class CustomDataset(Dataset):
 
 """#### Custom DataLoaders"""
 
-def train_split_dataset(folder_inputs,path_csv,ratio=0, transform=None,size_split=[], train=True):
+def train_split_dataset(folder_inputs,path_csv,ratio, transform=None,size_split=[], train=True):
   datasets = []
   number_indexes = len(pd.read_csv(path_csv))
   list_indexes = [i for i in range(number_indexes)]
@@ -245,16 +255,20 @@ def train_split_dataset(folder_inputs,path_csv,ratio=0, transform=None,size_spli
 
       train_indexes = list_indexes[0: int(size_split[0]*len(list_indexes))]
       test_indexes = list_indexes[int(size_split[0]*len(list_indexes)):]
-      print(folder_inputs,path_csv,train_indexes,ratio, transform)
+    #   print(folder_inputs,path_csv,train_indexes,ratio, transform)
       train_dataset = CustomDataset(folder_inputs,path_csv,train_indexes,ratio, transform, True)
-      print(len(train_dataset))
+      f=open(path_csv_results.replace('csv','txt'), 'a')
+      f.write(str(len(train_dataset))+"\n")
+      f.close()
       test_dataset = CustomDataset(folder_inputs,path_csv,test_indexes,ratio, transform, False)
-      print(len(test_dataset))
+      f=open(path_csv_results.replace('csv','txt'), 'a')
+      f.write(str(len(test_dataset))+"\n")
+      f.close()
       datasets = [train_dataset, test_dataset]
 
   return(datasets)
 
-def get_dataloaders(folder_inputs,path_csv, batch_size,ratio=0,  transform=None,size_split=[], train=True):
+def get_dataloaders(folder_inputs,path_csv, batch_size,ratio,  transform=None,size_split=[], train=True):
   dataloaders = []
   datasets = train_split_dataset(folder_inputs,path_csv,ratio, transform,size_split, train)
   train_loader = torch.utils.data.DataLoader(datasets[0], batch_size=batch_size, shuffle=True, num_workers=0)
@@ -351,10 +365,12 @@ def train(epoch, network, loader, optimizer, device):
         loss = F.cross_entropy(output, target_int)
         loss.backward()
         optimizer.step()
-        if batch_idx % 100 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+        if batch_idx % 50 == 0:
+            f=open(path_csv_results.replace('csv','txt'), 'a')
+            f.write('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(loader.dataset),
-                100. * batch_idx / len(loader), loss.item()))
+                100. * batch_idx / len(loader), loss.item())+"\n")
+            f.close()
     return loss.item()
 
 def test(network, loader, optimizer, device, set_):
@@ -374,60 +390,113 @@ def test(network, loader, optimizer, device, set_):
         correct += pred.eq(target_int.data.view_as(pred)).cpu().sum()
 
     test_loss /= len(loader.dataset)
-    print('\n '+set_+ ' set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+    f=open(path_csv_results.replace('csv','txt'), 'a')
+    f.write('\n '+set_+ ' set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, len(loader.dataset),
-        100. * correct / (len(loader.dataset))))
-    return(100. * correct / (len(loader.dataset)))
+        100. * correct / (len(loader.dataset)))+"\n")
+    f.close()
+    return(100. * correct / (len(loader.dataset))).item()
 
 """### GridSearch OSL"""
 
 def grid_search(batch_size_list, epochs_list, lr_list, path_input, 
-                path_csv_output, size_split, size_picture, ratio=1):
+                path_csv_output, size_split, size_picture, path_csv_results, ratio):
 
       ##### INITIALIZATION ######   
+      start_time = time.time()
       device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
       #device = "cpu"
-      print('device :',device)
+      f=open(path_csv_results.replace('csv','txt'), 'a')
+      f.write('device : '+str(device)+"\n")
+      f.close()
       dict_results = {}
       
       data_transform = transforms.Compose([transforms.ToTensor()])
       datasets = train_split_dataset(path_input,path_csv_output,ratio, data_transform,size_split, False)
-
-      print('##############################')
-      for batch_size in batch_size_list:
-
-        train_loader = torch.utils.data.DataLoader(datasets[0], batch_size=batch_size, shuffle=True, num_workers=0)
-        test_loader = torch.utils.data.DataLoader(datasets[1], batch_size=batch_size, shuffle=True, num_workers=0)
-
-        for epochs in epochs_list:
-          for lr in lr_list:
-            #torch.cuda.empty_cache()
-
-            print('Working on model = ', ' batch size: '+str(batch_size)+' epochs: '+str(epochs) +' lr: '+str(lr))
+      f=open(path_csv_results.replace('csv','txt'), 'a')
+      f.write("--- %s seconds for initialisation ---" % (time.time() - start_time)+"\n")
+      f.write('##############################'+"\n")
+      f.close()
+      for batch_size in batch_size_list: # parallelizer imap
+        start_time = time.time()
+        train_loader = torch.utils.data.DataLoader(datasets[0], batch_size=batch_size, shuffle=True, num_workers=1)
+        test_loader = torch.utils.data.DataLoader(datasets[1], batch_size=batch_size, shuffle=True, num_workers=1)
+        f=open(path_csv_results.replace('csv','txt'), 'a')
+        f.write("--- {} seconds for dataloader with batch_size : {}---".format(str(time.time() - start_time), str(batch_size))+"\n")
+        f.close()
+        for lr in lr_list: # parallelizer
+            start_time = time.time()
             network = SiameseNetwork(size_picture, device).to(device)
+            # network = nn.DataParallel(network)
+            f=open(path_csv_results.replace('csv','txt'), 'a')
+            f.write("no DataParallel"+"\n")
+            f.close()
 
             optimizer = optim.SGD(network.parameters(), lr=lr)
             losses = []
+            #torch.cuda.empty_cache()
+            f=open(path_csv_results.replace('csv','txt'), 'a')
+            f.write("--- {} seconds for creation and optimisation with lr : {}---".format(str(time.time() - start_time), str(lr))+"\n")
+            f.close()
+                
             ##### TRAINING #####
-            for epoch in range(epochs):
-                train_loss = train(epoch, network, train_loader, optimizer, device)
+            for epochs in range(max(epochs_list)+1):
+                start_time = time.time()    
+                f=open(path_csv_results.replace('csv','txt'), 'a')
+                f.write('Working on model = '+' batch size: '+str(batch_size)+' epochs: '+str(epochs) +' lr: '+str(lr)+"\n")
+                f.close()
+                train_loss = train(epochs, network, train_loader, optimizer, device)
                 losses +=[train_loss]
-                if epoch%10==0:
-                    file_snapshot = '/gpfs/workdir/dunoyerg/snapshot/' + 'snapshot'+'_'+str(batch_size)+'_'+str(epoch)+'_'+str(lr)+'_'+'.pt'
-                    network_snapshot(network,optimizer,file_snapshot,epoch,train_loss, losses,epochs_list,batch_size,lr)
-            if epochs%10!=0:
-                file_snapshot = '/gpfs/workdir/dunoyerg/snapshot/' + 'snapshot'+'_'+str(batch_size)+'_'+str(epoch)+'_'+str(lr)+'_'+'.pt'
-                network_snapshot(network,optimizer,file_snapshot,epoch,train_loss, losses,epochs_list,batch_size,lr)
+                f=open(path_csv_results.replace('csv','txt'), 'a')
+                f.write("--- {} seconds for training with epochs : {}---".format(str(time.time() - start_time), str(epochs))+"\n")    
+                f.close()
+
+                if epochs in epochs_list:
+                    
+                    file_snapshot = '/gpfs/workdir/dunoyerg/snapshot/' + 'snapshot'+'_'+str(batch_size)+'_'+str(epochs)+'_'+str(lr)+'_'+'.pt'
+                    network_snapshot(network,optimizer,file_snapshot,epochs,train_loss, losses,epochs_list,batch_size,lr)
+                    start_time = time.time()  
+                    dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]= [test(network, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]
+                    f=open(path_csv_results.replace('csv','txt'), 'a')
+                    f.write("--- {} seconds for test ---".format(str(time.time() - start_time))+"\n")
+                    f.close()
+                    f = open(path_csv_results, "a")
+                    f.write(str(batch_size)+';'+str(epochs)+';'+ str(lr) +';'+ ';'.join([str(elem) for elem in dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]])+"\n")
+                    f.close()
+                    torch.save(network.state_dict(), '/gpfs/workdir/dunoyerg/models/' +'/model'+str(batch_size)+str(epochs)+str(lr)+'.pt')
+            del network
+            
+        # for epochs in epochs_list:
+        #   for lr in lr_list:
+        #     #torch.cuda.empty_cache()
+
+        #     print('Working on model = ', ' batch size: '+str(batch_size)+' epochs: '+str(epochs) +' lr: '+str(lr))
+        #     network = SiameseNetwork(size_picture, device).to(device)
+        #     network = nn.DataParallel(network)
+
+        #     optimizer = optim.SGD(network.parameters(), lr=lr)
+        #     losses = []
+        #     ##### TRAINING #####
+        #     for epoch in range(epochs):
+        #         train_loss = train(epoch, network, train_loader, optimizer, device)
+        #         losses +=[train_loss]
+        #         if epoch%10==0:
+        #             file_snapshot = '/gpfs/workdir/dunoyerg/snapshot/' + 'snapshot'+'_'+str(batch_size)+'_'+str(epoch)+'_'+str(lr)+'_'+'.pt'
+        #             network_snapshot(network,optimizer,file_snapshot,epoch,train_loss, losses,epochs_list,batch_size,lr)
+        #     if epochs%10!=0:
+        #         file_snapshot = '/gpfs/workdir/dunoyerg/snapshot/' + 'snapshot'+'_'+str(batch_size)+'_'+str(epoch)+'_'+str(lr)+'_'+'.pt'
+        #         network_snapshot(network,optimizer,file_snapshot,epoch,train_loss, losses,epochs_list,batch_size,lr)
                     
             
-            dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]= [test(network, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]
-            f = open("results.csv", "a")
-            f.write(str(batch_size)+';'+str(epochs)+';'+ str(lr) + ';' + ''.join([str(elem) for elem in dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]])+"\n")
+        #     dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]= [test(network, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]
+        #     f = open(path_csv_results, "a")
+        #     f.write(str(batch_size)+';'+str(epochs)+';'+ str(lr) + ';'.join([str(elem) for elem in dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]])+"\n")
+        #     f.close()
+        #     torch.save(network.state_dict(), '/gpfs/workdir/dunoyerg/models/' +'/model'+str(batch_size)+str(epochs)+str(lr)+'.pt')
+        #     del network
+            f=open(path_csv_results.replace('csv','txt'), 'a')
+            f.write('________________________________________'+"\n")
             f.close()
-            torch.save(network.state_dict(), '/gpfs/workdir/dunoyerg/models/' +'/model'+str(batch_size)+str(epochs)+str(lr)+'.pt')
-            del network
-            print('________________________________________')
-
       return(dict_results)
 
 """### Net work snapshot """
@@ -446,27 +515,35 @@ def network_snapshot(network,optimizer,path,epoch,loss,losses,epochs,batch_size,
 
 if __name__ == "__main__":
 
+    start_time = time.time()
     ## parameters
     # paths
     # path_input = './data'
     path_input = os.path.abspath(sys.argv[1])+"/"
     # path_csv_output =  './output.csv'
     path_csv_output = os.path.abspath(sys.argv[2])
-    print(path_csv_output, path_input)
+    path_csv_results = os.path.abspath(sys.argv[3])
+    f=open(path_csv_results.replace('csv','txt'), 'a')
+    f.write(path_csv_output+","+ path_input+","+path_csv_results+","+path_csv_results+"\n")
+    f.close()
     #grid search parameters
-    batch_size_list = [10,20,50,100]
-    epochs_list = [25, 50, 75, 100]
-    lr_list = [1, 0.1, 0.01, 0.001]
-    size_split =  [0.95, 0.05]
-    size_picture = [6,250, 250]
-    ratio=3
-    # batch_size_list = [1]
-    # epochs_list = [1]
-    # lr_list = [1]
+    # batch_size_list = [128, 64, 32]
+    # epochs_list = [25, 50, 75, 100, 150, 200]
+    # lr_list = [0.1, 0.01, 0.001]
     # size_split =  [0.95, 0.05]
     # size_picture = [6,250, 250]
     # ratio=3
+    batch_size_list = [256]
+    epochs_list = [1]#[i for i in range(11)]
+    lr_list = [0.1]
+    size_split =  [0.95, 0.05]
+    size_picture = [6,250, 250]
+    ratio=3
 
     ## main 
-    grid_search(batch_size_list, epochs_list, lr_list, path_input, path_csv_output, size_split, size_picture, ratio)
-
+    
+    grid_results = grid_search(batch_size_list, epochs_list, lr_list, path_input, path_csv_output, size_split, size_picture, path_csv_results, ratio)
+    f=open(path_csv_results.replace('csv','txt'), 'a')
+    f.write(str(grid_results)+"\n")
+    f.write("--- %s seconds ---" % (time.time() - start_time)+"\n")
+    f.close()
