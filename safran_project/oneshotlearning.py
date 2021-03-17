@@ -577,7 +577,7 @@ if __name__ == "__main__":
         df_results = pd.DataFrame(columns=['batch_size', 'epochs', 'lr', 'acc_train', 'acc_test', 'loss_test'])
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # device = "cpu"
-        print('device :',device)
+        print('device : '+device)
         dict_results = {}
 
         print('##############################')

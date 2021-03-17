@@ -1,0 +1,79 @@
+/gpfs/workdir/dunoyerg/output_faces.csv /gpfs/workdir/dunoyerg/photos_apprentissage_visage/ /gpfs/workdir/dunoyerg/output_print/faces_187389.csv /gpfs/workdir/dunoyerg/output_print/faces_187389.csv
+device : cuda:0
+445080
+3424
+##############################
+no DataParallel
+Working on model =   batch size: 128 epochs: 0 lr: 0.1
+Train Epoch: 0 [0/445080 (0%)]	Loss: 0.851468
+Train Epoch: 0 [6400/445080 (1%)]	Loss: 0.899196
+Train Epoch: 0 [12800/445080 (3%)]	Loss: 0.727246
+Train Epoch: 0 [19200/445080 (4%)]	Loss: 0.796472
+Train Epoch: 0 [25600/445080 (6%)]	Loss: 0.820226
+Train Epoch: 0 [32000/445080 (7%)]	Loss: 0.851806
+Train Epoch: 0 [38400/445080 (9%)]	Loss: 0.676429
+Train Epoch: 0 [44800/445080 (10%)]	Loss: 0.614082
+Train Epoch: 0 [51200/445080 (12%)]	Loss: 0.575823
+Train Epoch: 0 [57600/445080 (13%)]	Loss: 0.638733
+Train Epoch: 0 [64000/445080 (14%)]	Loss: 0.660587
+Train Epoch: 0 [70400/445080 (16%)]	Loss: 0.651615
+Train Epoch: 0 [76800/445080 (17%)]	Loss: 0.586655
+Train Epoch: 0 [83200/445080 (19%)]	Loss: 0.624939
+Train Epoch: 0 [89600/445080 (20%)]	Loss: 0.612632
+Train Epoch: 0 [96000/445080 (22%)]	Loss: 0.647130
+Train Epoch: 0 [102400/445080 (23%)]	Loss: 0.649151
+Train Epoch: 0 [108800/445080 (24%)]	Loss: 0.633970
+Train Epoch: 0 [115200/445080 (26%)]	Loss: 0.583667
+Train Epoch: 0 [121600/445080 (27%)]	Loss: 0.645466
+Train Epoch: 0 [128000/445080 (29%)]	Loss: 0.669208
+Train Epoch: 0 [134400/445080 (30%)]	Loss: 0.526001
+Train Epoch: 0 [140800/445080 (32%)]	Loss: 0.601458
+Train Epoch: 0 [147200/445080 (33%)]	Loss: 0.607256
+Train Epoch: 0 [153600/445080 (35%)]	Loss: 0.615667
+Train Epoch: 0 [160000/445080 (36%)]	Loss: 0.609705
+Train Epoch: 0 [166400/445080 (37%)]	Loss: 0.556007
+Train Epoch: 0 [172800/445080 (39%)]	Loss: 0.581818
+Train Epoch: 0 [179200/445080 (40%)]	Loss: 0.587508
+Train Epoch: 0 [185600/445080 (42%)]	Loss: 0.588667
+Train Epoch: 0 [192000/445080 (43%)]	Loss: 0.618432
+Train Epoch: 0 [198400/445080 (45%)]	Loss: 0.581257
+Train Epoch: 0 [204800/445080 (46%)]	Loss: 0.606957
+Train Epoch: 0 [211200/445080 (47%)]	Loss: 0.601963
+Train Epoch: 0 [217600/445080 (49%)]	Loss: 0.546885
+Train Epoch: 0 [224000/445080 (50%)]	Loss: 0.610785
+Train Epoch: 0 [230400/445080 (52%)]	Loss: 0.613893
+Train Epoch: 0 [236800/445080 (53%)]	Loss: 0.570713
+Train Epoch: 0 [243200/445080 (55%)]	Loss: 0.620622
+Train Epoch: 0 [249600/445080 (56%)]	Loss: 0.603531
+Train Epoch: 0 [256000/445080 (58%)]	Loss: 0.573651
+Train Epoch: 0 [262400/445080 (59%)]	Loss: 0.553653
+Train Epoch: 0 [268800/445080 (60%)]	Loss: 0.562763
+Train Epoch: 0 [275200/445080 (62%)]	Loss: 0.605480
+Train Epoch: 0 [281600/445080 (63%)]	Loss: 0.568023
+Train Epoch: 0 [288000/445080 (65%)]	Loss: 0.589398
+Train Epoch: 0 [294400/445080 (66%)]	Loss: 0.577361
+Train Epoch: 0 [300800/445080 (68%)]	Loss: 0.568614
+Train Epoch: 0 [307200/445080 (69%)]	Loss: 0.531512
+Train Epoch: 0 [313600/445080 (70%)]	Loss: 0.647052
+Train Epoch: 0 [320000/445080 (72%)]	Loss: 0.639196
+Train Epoch: 0 [326400/445080 (73%)]	Loss: 0.654090
+Train Epoch: 0 [332800/445080 (75%)]	Loss: 0.598952
+Train Epoch: 0 [339200/445080 (76%)]	Loss: 0.575989
+Train Epoch: 0 [345600/445080 (78%)]	Loss: 0.567729
+Train Epoch: 0 [352000/445080 (79%)]	Loss: 0.575605
+Train Epoch: 0 [358400/445080 (81%)]	Loss: 0.601411
+Train Epoch: 0 [364800/445080 (82%)]	Loss: 0.651555
+Train Epoch: 0 [371200/445080 (83%)]	Loss: 0.604918
+Train Epoch: 0 [377600/445080 (85%)]	Loss: 0.612443
+Train Epoch: 0 [384000/445080 (86%)]	Loss: 0.618465
+Train Epoch: 0 [390400/445080 (88%)]	Loss: 0.614505
+Train Epoch: 0 [396800/445080 (89%)]	Loss: 0.603707
+Train Epoch: 0 [403200/445080 (91%)]	Loss: 0.557049
+Train Epoch: 0 [409600/445080 (92%)]	Loss: 0.589342
+Train Epoch: 0 [416000/445080 (93%)]	Loss: 0.609730
+Train Epoch: 0 [422400/445080 (95%)]	Loss: 0.497451
+Train Epoch: 0 [428800/445080 (96%)]	Loss: 0.575897
+Train Epoch: 0 [435200/445080 (98%)]	Loss: 0.590778
+Train Epoch: 0 [441600/445080 (99%)]	Loss: 0.567243
+Working on model =   batch size: 128 epochs: 1 lr: 0.1
+slurmstepd: error: *** JOB 187389 ON ruche-gpu08 CANCELLED AT 2021-03-11T22:02:05 DUE TO TIME LIMIT ***

@@ -35,6 +35,7 @@ from torch.autograd import Variable
 from torch.utils.data import Dataset
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
+import torch.multiprocessing as mp
 
 # generate random integer values
 """### Preprocessing of the Data
@@ -256,7 +257,7 @@ class CustomDataset(Dataset):
 
 """#### Custom DataLoaders"""
 
-def train_split_dataset(folder_inputs,path_csv,ratio, transform=None,size_split=[], train=True):
+def train_split_dataset(folder_inputs,path_csv,path_csv_results,ratio, transform=None,size_split=[], train=True):
   datasets = []
   number_indexes = len(pd.read_csv(path_csv))
   list_indexes = [i for i in range(number_indexes)]
@@ -283,7 +284,7 @@ def train_split_dataset(folder_inputs,path_csv,ratio, transform=None,size_split=
 
 def get_dataloaders(folder_inputs,path_csv, batch_size,ratio,  transform=None,size_split=[], train=True):
   dataloaders = []
-  datasets = train_split_dataset(folder_inputs,path_csv,ratio, transform,size_split, train)
+  datasets = train_split_dataset(folder_inputs,path_csv,path_csv_results,ratio, transform,size_split, train)
   train_loader = torch.utils.data.DataLoader(datasets[0], batch_size=batch_size, shuffle=True, num_workers=0)
   if train:
       return([train_loader])
@@ -410,6 +411,41 @@ def test(network, loader, optimizer, device, set_):
     f.close()
     return(100. * correct / (len(loader.dataset))).item()
 
+
+"""### DDP stuff"""
+
+def run_DDP(rank, world_size, path_input, path_csv_output, size_split, size_picture, path_csv_results, ratio):
+    print(f"Running basic DDP example on rank {rank}.")
+    setup(rank, world_size)
+    
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    # create model and move it to GPU with id rank
+    model = SiameseNetwork(size_picture, device).to(rank)
+    ddp_model = DDP(model, device_ids=[rank])
+
+    loss_fn = nn.MSELoss()
+    optimizer = optim.SGD(ddp_model.parameters(), lr=0.001)
+
+    optimizer.zero_grad()
+    # outputs = ddp_model(torch.randn(20, 10))
+    batch_size = 1024
+    data_transform = transforms.Compose([transforms.ToTensor()])
+    datasets = train_split_dataset(path_input,path_csv_output,path_csv_results,ratio, data_transform,size_split, False)
+    train_loader = torch.utils.data.DataLoader(datasets[0], batch_size=batch_size, shuffle=True, num_workers=1)
+    test_loader = torch.utils.data.DataLoader(datasets[1], batch_size=batch_size, shuffle=True, num_workers=1)
+    epochs=10
+    train(epochs, ddp_model, train_loader, optimizer, device)
+    [test(ddp_model, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]
+
+    cleanup()
+
+def run_demo(demo_fn, world_size,path_input, path_csv_output, size_split, size_picture, path_csv_results, ratio):
+    mp.spawn(demo_fn,
+             args=(world_size,path_input, path_csv_output, size_split, size_picture, path_csv_results, ratio),
+             nprocs=world_size,
+             join=True)
+
 """### GridSearch OSL"""
 
 def grid_search(batch_size_list, epochs_list, lr_list, path_input, 
@@ -425,7 +461,7 @@ def grid_search(batch_size_list, epochs_list, lr_list, path_input,
       dict_results = {}
       
       data_transform = transforms.Compose([transforms.ToTensor()])
-      datasets = train_split_dataset(path_input,path_csv_output,ratio, data_transform,size_split, False)
+      datasets = train_split_dataset(path_input,path_csv_output,path_csv_results,ratio, data_transform,size_split, False)
       f=open(path_csv_results.replace('csv','txt'), 'a')
       f.write("--- %s seconds for initialisation ---" % (time.time() - start_time)+"\n")
       f.write('##############################'+"\n")
@@ -440,9 +476,9 @@ def grid_search(batch_size_list, epochs_list, lr_list, path_input,
         for lr in lr_list: # parallelizer
             start_time = time.time()
             network = SiameseNetwork(size_picture, device).to(device)
-            network = nn.DataParallel(network)
+            # network = nn.DataParallel(network)
             f=open(path_csv_results.replace('csv','txt'), 'a')
-            f.write("with DataParallel"+"\n")
+            f.write("no DataParallel"+"\n")
             f.close()
 
             optimizer = optim.SGD(network.parameters(), lr=lr)
@@ -478,35 +514,6 @@ def grid_search(batch_size_list, epochs_list, lr_list, path_input,
                     f.close()
                     torch.save(network.state_dict(), '/gpfs/workdir/dunoyerg/models/' +'/model'+str(batch_size)+str(epochs)+str(lr)+'.pt')
             del network
-            
-        # for epochs in epochs_list:
-        #   for lr in lr_list:
-        #     #torch.cuda.empty_cache()
-
-        #     print('Working on model = ', ' batch size: '+str(batch_size)+' epochs: '+str(epochs) +' lr: '+str(lr))
-        #     network = SiameseNetwork(size_picture, device).to(device)
-        #     network = nn.DataParallel(network)
-
-        #     optimizer = optim.SGD(network.parameters(), lr=lr)
-        #     losses = []
-        #     ##### TRAINING #####
-        #     for epoch in range(epochs):
-        #         train_loss = train(epoch, network, train_loader, optimizer, device)
-        #         losses +=[train_loss]
-        #         if epoch%10==0:
-        #             file_snapshot = '/gpfs/workdir/dunoyerg/snapshot/' + 'snapshot'+'_'+str(batch_size)+'_'+str(epoch)+'_'+str(lr)+'_'+'.pt'
-        #             network_snapshot(network,optimizer,file_snapshot,epoch,train_loss, losses,epochs_list,batch_size,lr)
-        #     if epochs%10!=0:
-        #         file_snapshot = '/gpfs/workdir/dunoyerg/snapshot/' + 'snapshot'+'_'+str(batch_size)+'_'+str(epoch)+'_'+str(lr)+'_'+'.pt'
-        #         network_snapshot(network,optimizer,file_snapshot,epoch,train_loss, losses,epochs_list,batch_size,lr)
-                    
-            
-        #     dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]= [test(network, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]
-        #     f = open(path_csv_results, "a")
-        #     f.write(str(batch_size)+';'+str(epochs)+';'+ str(lr) + ';'.join([str(elem) for elem in dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]])+"\n")
-        #     f.close()
-        #     torch.save(network.state_dict(), '/gpfs/workdir/dunoyerg/models/' +'/model'+str(batch_size)+str(epochs)+str(lr)+'.pt')
-        #     del network
             f=open(path_csv_results.replace('csv','txt'), 'a')
             f.write('________________________________________'+"\n")
             f.close()
@@ -546,7 +553,7 @@ if __name__ == "__main__":
     # size_split =  [0.95, 0.05]
     # size_picture = [6,250, 250]
     # ratio=3
-    batch_size_list = [2048]
+    batch_size_list = [256]
     epochs_list = [1]#[i for i in range(11)]
     lr_list = [0.1]
     size_split =  [0.95, 0.05]
@@ -555,8 +562,10 @@ if __name__ == "__main__":
 
     ## main 
     
-    grid_results = grid_search(batch_size_list, epochs_list, lr_list, path_input, path_csv_output, size_split, size_picture, path_csv_results, ratio)
-    f=open(path_csv_results.replace('csv','txt'), 'a')
-    f.write(str(grid_results)+"\n")
-    f.write("--- %s seconds ---" % (time.time() - start_time)+"\n")
-    f.close()
+    run_demo(run_DDP, 4, path_input, path_csv_output, size_split, size_picture, path_csv_results, ratio)
+
+    # grid_results = grid_search(batch_size_list, epochs_list, lr_list, path_input, path_csv_output, size_split, size_picture, path_csv_results, ratio)
+    # f=open(path_csv_results.replace('csv','txt'), 'a')
+    # f.write(str(grid_results)+"\n")
+    # f.write("--- %s seconds ---" % (time.time() - start_time)+"\n")
+    # f.close()

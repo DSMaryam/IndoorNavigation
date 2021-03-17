@@ -1,0 +1,31 @@
+Running basic DDP example on rank 0.
+Running basic DDP example on rank 1.
+Running basic DDP example on rank 2.
+Running basic DDP example on rank 3.
+Traceback (most recent call last):
+  File "oneshotlearning_RGB_DDP.py", line 565, in <module>
+    run_demo(run_DDP, 4, path_input, path_csv_output, size_split, size_picture, path_csv_results, ratio)
+  File "oneshotlearning_RGB_DDP.py", line 444, in run_demo
+    mp.spawn(demo_fn,
+  File "/gpfs/users/dunoyerg/.conda/envs/cifar10/lib/python3.8/site-packages/torch/multiprocessing/spawn.py", line 199, in spawn
+    return start_processes(fn, args, nprocs, join, daemon, start_method='spawn')
+  File "/gpfs/users/dunoyerg/.conda/envs/cifar10/lib/python3.8/site-packages/torch/multiprocessing/spawn.py", line 157, in start_processes
+    while not context.join():
+  File "/gpfs/users/dunoyerg/.conda/envs/cifar10/lib/python3.8/site-packages/torch/multiprocessing/spawn.py", line 118, in join
+    raise Exception(msg)
+Exception: 
+
+-- Process 1 terminated with the following error:
+Traceback (most recent call last):
+  File "/gpfs/users/dunoyerg/.conda/envs/cifar10/lib/python3.8/site-packages/torch/multiprocessing/spawn.py", line 19, in _wrap
+    fn(i, *args)
+  File "/gpfs/users/dunoyerg/navigation_indoor_safran/safran_project/oneshotlearning_RGB_DDP.py", line 438, in run_DDP
+    train(epochs, ddp_model, train_loader, optimizer, device)
+  File "/gpfs/users/dunoyerg/navigation_indoor_safran/safran_project/oneshotlearning_RGB_DDP.py", line 379, in train
+    loss = F.cross_entropy(output, target_int)
+  File "/gpfs/users/dunoyerg/.conda/envs/cifar10/lib/python3.8/site-packages/torch/nn/functional.py", line 2468, in cross_entropy
+    return nll_loss(log_softmax(input, 1), target, weight, None, ignore_index, None, reduction)
+  File "/gpfs/users/dunoyerg/.conda/envs/cifar10/lib/python3.8/site-packages/torch/nn/functional.py", line 2264, in nll_loss
+    ret = torch._C._nn.nll_loss(input, target, weight, _Reduction.get_enum(reduction), ignore_index)
+RuntimeError: Assertion `THCTensor_(checkGPU)(state, 4, input, target, output, total_weight)' failed. Some of weight/gradient/input tensors are located on different GPUs. Please move them to a single one. at /opt/conda/conda-bld/pytorch_1607369981906/work/aten/src/THCUNN/generic/ClassNLLCriterion.cu:28
+
