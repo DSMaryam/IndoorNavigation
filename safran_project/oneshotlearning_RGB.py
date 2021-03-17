@@ -157,6 +157,7 @@ class CustomDataset(Dataset):
         self.data_output = pd.read_csv(path_csv)
         self.folder_inputs = folder_inputs
         self.list_indexes = list_indexes
+        self.max_nb_pairs=100000
         if train:
           self.inputs, self.landmarks = self.generate_random_dataset()
         else:
@@ -169,13 +170,26 @@ class CustomDataset(Dataset):
         df_output = self.data_output.iloc[self.list_indexes, :]
         pairs = []
         output = []
+        max_nb_pairs_reached=0
+        max_n=self.max_nb_pairs//2
+        break_2=False
+        break_3=False
         for class_ in set(df_output['class'].values):
             df_int = df_output[df_output['class']==class_]
             filenames = list(df_int['path'].values)
+            if break_3:
+                break
             for i in range(len(filenames)):
-              for j in range(i+1, len(filenames)):
-                  output.append(1)
-                  pairs.append([filenames[i], filenames[j]])
+                if break_2:
+                    break
+                for j in range(i+1, len(filenames)):
+                    output.append(1)
+                    pairs.append([filenames[i], filenames[j]])
+                    if max_nb_pairs_reached>max_n:
+                        break_2=True
+                        break_3=True
+                        break
+                    max_nb_pairs_reached+=1
 
         filenames = list(df_output['path'].values)
 
@@ -195,6 +209,8 @@ class CustomDataset(Dataset):
       
       df_output = self.data_output.iloc[self.list_indexes, :]
       filenames = df_output['path'].values
+      max_pairs_per_file=math.floor(self.max_nb_pairs/len(filenames))
+      max_real_pairs_per_file=math.floor(max_pairs_per_file/(1+self.ratio))
 
       for filename in filenames:
           class_i = df_output[df_output['path'] == filename]['class'].values[0]
@@ -206,6 +222,9 @@ class CustomDataset(Dataset):
           #print('new pairs: ', len(add_pairs))
 
           if len(add_pairs)!=0:
+              max_length=min(len(add_pairs),max_real_pairs_per_file)
+              shuffle(add_pairs)
+              add_pairs=add_pairs[:max_length]
               pairs += add_pairs
               output += [1 for i in range(len(add_pairs))]
 
@@ -226,6 +245,7 @@ class CustomDataset(Dataset):
               #print('output: ', len(output))
 
       return(pairs, output)
+
 
 
     def __len__(self):
