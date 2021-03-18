@@ -10,6 +10,7 @@ import sys
 import pathlib
 import numpy as np
 import pandas as pd
+import math
 import random 
 from random import randint, shuffle
 import time
@@ -157,7 +158,7 @@ class CustomDataset(Dataset):
         self.data_output = pd.read_csv(path_csv)
         self.folder_inputs = folder_inputs
         self.list_indexes = list_indexes
-        self.max_nb_pairs=100000
+        self.max_nb_pairs=10000
         if train:
           self.inputs, self.landmarks = self.generate_random_dataset()
         else:
@@ -560,18 +561,19 @@ if __name__ == "__main__":
     f.write(path_csv_output+","+ path_input+","+path_csv_results+","+path_csv_results+"\n")
     f.close()
     #grid search parameters
-    # batch_size_list = [128, 64, 32]
+    batch_size_list = [512, 256,128, 64, 32]
     # epochs_list = [25, 50, 75, 100, 150, 200]
-    # lr_list = [0.1, 0.01, 0.001]
-    # size_split =  [0.95, 0.05]
-    # size_picture = [6,250, 250]
-    # ratio=3
-    batch_size_list = [2048]
-    epochs_list = [1]#[i for i in range(11)]
-    lr_list = [0.1]
+    epochs_list = [i for i in range(100)]
+    lr_list = [0.1, 0.01, 0.001]
     size_split =  [0.95, 0.05]
     size_picture = [6,250, 250]
     ratio=3
+    # batch_size_list = [512]
+    # epochs_list = [1]#[i for i in range(11)]
+    # lr_list = [0.1]
+    # size_split =  [0.95, 0.05]
+    # size_picture = [6,250, 250]
+    # ratio=3
 
     ## main 
     
