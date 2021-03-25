@@ -13,6 +13,7 @@ import pandas as pd
 import random 
 from random import randint, shuffle
 import time
+import math
 
 #data augmentation imports
 from skimage import data
@@ -158,6 +159,7 @@ class CustomDataset(Dataset):
         self.data_output = pd.read_csv(path_csv)
         self.folder_inputs = folder_inputs
         self.list_indexes = list_indexes
+        self.max_nb_pairs=10000
         if train:
           self.inputs, self.landmarks = self.generate_random_dataset()
         else:
@@ -170,13 +172,26 @@ class CustomDataset(Dataset):
         df_output = self.data_output.iloc[self.list_indexes, :]
         pairs = []
         output = []
+        max_nb_pairs_reached=0
+        max_n=self.max_nb_pairs//2
+        break_2=False
+        break_3=False
         for class_ in set(df_output['class'].values):
             df_int = df_output[df_output['class']==class_]
             filenames = list(df_int['path'].values)
+            if break_3:
+                break
             for i in range(len(filenames)):
-              for j in range(i+1, len(filenames)):
-                  output.append(1)
-                  pairs.append([filenames[i], filenames[j]])
+                if break_2:
+                    break
+                for j in range(i+1, len(filenames)):
+                    output.append(1)
+                    pairs.append([filenames[i], filenames[j]])
+                    if max_nb_pairs_reached>max_n:
+                        break_2=True
+                        break_3=True
+                        break
+                    max_nb_pairs_reached+=1
 
         filenames = list(df_output['path'].values)
 
@@ -196,6 +211,8 @@ class CustomDataset(Dataset):
       
       df_output = self.data_output.iloc[self.list_indexes, :]
       filenames = df_output['path'].values
+      max_pairs_per_file=math.floor(self.max_nb_pairs/len(filenames))
+      max_real_pairs_per_file=math.floor(max_pairs_per_file/(1+self.ratio))
 
       for filename in filenames:
           class_i = df_output[df_output['path'] == filename]['class'].values[0]
@@ -207,6 +224,9 @@ class CustomDataset(Dataset):
           #print('new pairs: ', len(add_pairs))
 
           if len(add_pairs)!=0:
+              max_length=min(len(add_pairs),max_real_pairs_per_file)
+              shuffle(add_pairs)
+              add_pairs=add_pairs[:max_length]
               pairs += add_pairs
               output += [1 for i in range(len(add_pairs))]
 
@@ -227,6 +247,7 @@ class CustomDataset(Dataset):
               #print('output: ', len(output))
 
       return(pairs, output)
+
 
 
     def __len__(self):
@@ -257,10 +278,12 @@ class CustomDataset(Dataset):
 
 """#### Custom DataLoaders"""
 
-def train_split_dataset(folder_inputs,path_csv,path_csv_results,ratio, transform=None,size_split=[], train=True):
+def train_split_dataset(folder_inputs,path_csv,path_csv_results,ratio, rank, world_size, transform=None,size_split=[], train=True):
+
   datasets = []
   number_indexes = len(pd.read_csv(path_csv))
   list_indexes = [i for i in range(number_indexes)]
+  list_indexes_rank = list_indexes[rank*world_size:rank*world_size+number_indexes//world_size]
   if train:
       train_dataset = CustomDataset(folder_inputs,path_csv,list_indexes, transform, True)
       datasets = [train_dataset]
@@ -368,14 +391,14 @@ class SiameseNetwork(nn.Module):
 
 """#### Utilities"""
 
-def train(epoch, network, loader, optimizer, device):
+def train(epoch, network, loader, optimizer, device, rank, path_csv_results): #TODO : try to 'rank'
     network.train()
     for batch_idx, (data, target) in enumerate(loader):
         data = data.to(device)
         target = target.to(device)
         optimizer.zero_grad()
         output = network(data)
-        target_int = torch.flatten(target, start_dim=0)
+        target_int = torch.flatten(target, start_dim=0).to(rank)
         loss = F.cross_entropy(output, target_int)
         loss.backward()
         optimizer.step()
@@ -387,7 +410,7 @@ def train(epoch, network, loader, optimizer, device):
             f.close()
     return loss.item()
 
-def test(network, loader, optimizer, device, set_):
+def test(network, loader, optimizer, device, set_, rank, path_csv_results):
     network.eval()
     test_loss = 0
     correct = 0
@@ -395,7 +418,7 @@ def test(network, loader, optimizer, device, set_):
     for batch_idx, (data, target) in enumerate(loader):
         data = data.to(device)
         target = target.to(device)
-        target_int = torch.flatten(target, start_dim=0)
+        target_int = torch.flatten(target, start_dim=0).to(rank)
 
         output = network(data)
         test_loss += F.cross_entropy(output, target_int).item()
@@ -424,19 +447,18 @@ def run_DDP(rank, world_size, path_input, path_csv_output, size_split, size_pict
     model = SiameseNetwork(size_picture, device).to(rank)
     ddp_model = DDP(model, device_ids=[rank])
 
-    loss_fn = nn.MSELoss()
     optimizer = optim.SGD(ddp_model.parameters(), lr=0.001)
 
     optimizer.zero_grad()
     # outputs = ddp_model(torch.randn(20, 10))
     batch_size = 1024
     data_transform = transforms.Compose([transforms.ToTensor()])
-    datasets = train_split_dataset(path_input,path_csv_output,path_csv_results,ratio, data_transform,size_split, False)
+    datasets = train_split_dataset(path_input,path_csv_output,path_csv_results,ratio, rank, world_size, data_transform,size_split, False)
     train_loader = torch.utils.data.DataLoader(datasets[0], batch_size=batch_size, shuffle=True, num_workers=1)
     test_loader = torch.utils.data.DataLoader(datasets[1], batch_size=batch_size, shuffle=True, num_workers=1)
     epochs=10
-    train(epochs, ddp_model, train_loader, optimizer, device)
-    [test(ddp_model, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]
+    train(epochs, ddp_model, train_loader, optimizer, device, rank, path_csv_results)
+    print([test(ddp_model, train_loader, optimizer, device, 'train', rank, path_csv_results), test(ddp_model, test_loader, optimizer, device, 'test', rank, path_csv_results)])
 
     cleanup()
 
@@ -534,7 +556,8 @@ def network_snapshot(network,optimizer,path,epoch,loss,losses,epochs,batch_size,
             }, path)
 
 if __name__ == "__main__":
-
+    n_gpus = torch.cuda.device_count()
+    print(n_gpus)
     start_time = time.time()
     ## parameters
     # paths

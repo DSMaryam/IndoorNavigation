@@ -431,6 +431,58 @@ def test(network, loader, optimizer, device, set_):
     f.close()
     return(100. * correct / (len(loader.dataset))).item()
 
+def test_with_confusion(network, loader, optimizer, device, set_):
+    network.eval()
+    test_loss = 0
+    correct = 0
+    tp=0
+    fp=0
+    fn=0
+    tn=0
+
+    for batch_idx, (data, target) in enumerate(loader):
+        data = data.to(device)
+        target = target.to(device)
+        target_int = torch.flatten(target, start_dim=0)
+
+        output = network(data)
+        test_loss += F.cross_entropy(output, target_int)
+
+        pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
+        correct += pred.eq(target_int.data.view_as(pred)).cpu().sum()
+
+        tp_,fp_,tn_,fn_=confusion(pred, target_int.data.view_as(pred))
+        tp+=tp_
+        fp+=fp_
+        fn+=fn_
+        tn+=tn_
+    if tp > 0:
+        precision=tp/(tp+fp)
+        recall=tp/(tp+fn)
+    else:
+        precision = 0
+        recall = 0
+    # accuracy=100. * correct / (len(loader.dataset))
+    accuracy = (100. * correct / (len(loader.dataset))).item()
+    test_loss /= len(loader.dataset)
+    print('\n '+set_+ ' set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        test_loss, correct, len(loader.dataset),
+        accuracy))
+    print('\n Precision : {} and Recall : {} \n'.format(precision,recall))
+    scores_dic={'accuracy':accuracy,'tp':tp,'fp':fp,'tn':tn,'fn':fn}
+    # return(scores_dic)
+    return accuracy, precision, recall
+
+def confusion(prediction, truth):
+    confusion_vector = prediction / truth
+
+    true_positives = torch.sum(confusion_vector == 1).item()
+    false_positives = torch.sum(confusion_vector == float('inf')).item()
+    true_negatives = torch.sum(torch.isnan(confusion_vector)).item()
+    false_negatives = torch.sum(confusion_vector == 0).item()
+
+    return true_positives, false_positives, true_negatives, false_negatives
+
 """### GridSearch OSL"""
 
 def grid_search(batch_size_list, epochs_list, lr_list, path_input, 
@@ -490,15 +542,18 @@ def grid_search(batch_size_list, epochs_list, lr_list, path_input,
                     file_snapshot = '/gpfs/workdir/dunoyerg/snapshot/' + 'snapshot'+'_'+str(batch_size)+'_'+str(epochs)+'_'+str(lr)+'_'+'.pt'
                     network_snapshot(network,optimizer,file_snapshot,epochs,train_loss, losses,epochs_list,batch_size,lr)
                     start_time = time.time()  
-                    dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]= [test(network, train_loader, optimizer, device, 'train'), test(network, test_loader, optimizer, device, 'test')]
+                    kk = [test_with_confusion(network, train_loader, optimizer, device, 'train'), test_with_confusion(network, test_loader, optimizer, device, 'test')]
                     f=open(path_csv_results.replace('csv','txt'), 'a')
                     f.write("--- {} seconds for test ---".format(str(time.time() - start_time))+"\n")
                     f.close()
                     f = open(path_csv_results, "a")
-                    f.write(str(batch_size)+';'+str(epochs)+';'+ str(lr) +';'+ ';'.join([str(elem) for elem in dict_results['model :'+str(batch_size)+' '+str(epochs) +' '+str(lr)]])+"\n")
+                    f.write(str(batch_size)+';'+str(epochs)+';'+ str(lr) +';'+ ';'.join([str(elem) for elem in kk])+"\n")
                     f.close()
                     torch.save(network.state_dict(), '/gpfs/workdir/dunoyerg/models/' +'/model'+str(batch_size)+str(epochs)+str(lr)+'.pt')
             del network
+            del optimizer
+            del losses
+            del dict_results
             
         # for epochs in epochs_list:
         #   for lr in lr_list:
@@ -561,10 +616,10 @@ if __name__ == "__main__":
     f.write(path_csv_output+","+ path_input+","+path_csv_results+","+path_csv_results+"\n")
     f.close()
     #grid search parameters
-    batch_size_list = [512, 256,128, 64, 32]
+    batch_size_list = [512, 256]
     # epochs_list = [25, 50, 75, 100, 150, 200]
     epochs_list = [i for i in range(100)]
-    lr_list = [0.1, 0.01, 0.001]
+    lr_list = [0.001]
     size_split =  [0.95, 0.05]
     size_picture = [6,250, 250]
     ratio=3
