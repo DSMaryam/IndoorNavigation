@@ -37,6 +37,11 @@ from torch.utils.data import Dataset
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
 import torch.multiprocessing as mp
+from torch.optim.lr_scheduler import StepLR
+
+
+from utils.DDPUtil import set_DDP_device, master_print, DDP_prepare, move_model_to_device, move_to_device, \
+    use_multi_GPUs, is_master, get_device
 
 # generate random integer values
 """### Preprocessing of the Data
@@ -278,12 +283,17 @@ class CustomDataset(Dataset):
 
 """#### Custom DataLoaders"""
 
-def train_split_dataset(folder_inputs,path_csv,path_csv_results,ratio, rank, world_size, transform=None,size_split=[], train=True):
-
+def train_split_dataset(folder_inputs,path_csv,ratio, transform=None,size_split=[], train=True):
   datasets = []
+  master_print('###########################')
+  master_print(folder_inputs)
+  master_print(path_csv)
+  master_print(path_csv_results)
+  master_print(train)
+  master_print(os.path.abspath("."))
+  master_print('###########################')
   number_indexes = len(pd.read_csv(path_csv))
   list_indexes = [i for i in range(number_indexes)]
-  list_indexes_rank = list_indexes[rank*world_size:rank*world_size+number_indexes//world_size]
   if train:
       train_dataset = CustomDataset(folder_inputs,path_csv,list_indexes, transform, True)
       datasets = [train_dataset]
@@ -303,7 +313,7 @@ def train_split_dataset(folder_inputs,path_csv,path_csv_results,ratio, rank, wor
       f.close()
       datasets = [train_dataset, test_dataset]
 
-  return(datasets)
+  return datasets
 
 def get_dataloaders(folder_inputs,path_csv, batch_size,ratio,  transform=None,size_split=[], train=True):
   dataloaders = []
@@ -391,76 +401,134 @@ class SiameseNetwork(nn.Module):
 
 """#### Utilities"""
 
-def train(epoch, network, loader, optimizer, device, rank, path_csv_results): #TODO : try to 'rank'
-    network.train()
-    for batch_idx, (data, target) in enumerate(loader):
-        data = data.to(device)
-        target = target.to(device)
+def train(log_interval, model, train_loader, train_data_sampler, optimizer, epoch):
+    model.train()
+
+    # DDP Step 4: Manually shuffle to avoid a known bug for DistributedSampler.
+    # https://github.com/pytorch/pytorch/issues/31232
+    # https://github.com/pytorch/pytorch/issues/31771
+    if use_multi_GPUs():
+        train_data_sampler.set_epoch(epoch)
+
+    # DDP Step 5: Only record the global loss value and other information in the master GPU.
+    if is_master():
+        global_cumulative_loss = 0
+
+    for batch_idx, (data, target) in enumerate(train_loader):
+        data, target = move_to_device(data), move_to_device(target)
         optimizer.zero_grad()
-        output = network(data)
-        target_int = torch.flatten(target, start_dim=0).to(rank)
-        loss = F.cross_entropy(output, target_int)
+        output = model(data)
+        loss = F.cross_entropy(output, torch.flatten(target, start_dim=0))
         loss.backward()
         optimizer.step()
-        if batch_idx % 50 == 0:
-            f=open(path_csv_results.replace('csv','txt'), 'a')
-            f.write('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(loader.dataset),
-                100. * batch_idx / len(loader), loss.item())+"\n")
-            f.close()
-    return loss.item()
 
-def test(network, loader, optimizer, device, set_, rank, path_csv_results):
-    network.eval()
-    test_loss = 0
-    correct = 0
+        loss_value = loss.item()
 
-    for batch_idx, (data, target) in enumerate(loader):
-        data = data.to(device)
-        target = target.to(device)
-        target_int = torch.flatten(target, start_dim=0).to(rank)
+        # DDP Step 6: Collect loss value and other information from each GPU to the master GPU.
+        if use_multi_GPUs():
+            # If more information is needed, add to this tensor.
+            result = torch.tensor([loss_value], device=get_device())
 
-        output = network(data)
-        test_loss += F.cross_entropy(output, target_int).item()
+            dist.barrier()
+            # Get the sum of results from all GPUs
+            dist.all_reduce(result, op=dist.ReduceOp.SUM)
 
-        pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
-        correct += pred.eq(target_int.data.view_as(pred)).cpu().sum()
+            # Only master GPU records all the information
+            if is_master():
+                result = result.tolist()
+                global_cumulative_loss += result[0]
+        else:
+            # use single GPU or CPU
+            global_cumulative_loss += loss_value
 
-    test_loss /= len(loader.dataset)
-    f=open(path_csv_results.replace('csv','txt'), 'a')
-    f.write('\n '+set_+ ' set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(loader.dataset),
-        100. * correct / (len(loader.dataset)))+"\n")
-    f.close()
-    return(100. * correct / (len(loader.dataset))).item()
+        if is_master() and batch_idx % log_interval == 0:
+            master_print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx * len(data), len(train_loader.dataset),
+                100. * batch_idx / len(train_loader), global_cumulative_loss))
+            # if args.dry_run:
+            #     break
 
+def test(model, test_loader):
+    model.eval()
+    # test_loss = 0
+    # correct = 0
+
+    # DDP Step 5: Only record the global loss value and other information in the master GPU.
+    if is_master():
+        global_cumulative_loss = 0
+        global_correct = 0
+
+    with torch.no_grad():
+
+        for data, target in test_loader:
+            data, target = move_to_device(data), move_to_device(target)
+            output = model(data)
+            test_loss_value = F.cross_entropy(output, torch.flatten(target, start_dim=0), reduction='sum').item()  # sum up batch loss
+            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            correct = pred.eq(target.view_as(pred)).sum().item()
+
+
+            # DDP Step 6: Collect loss value and other information from each GPU to the master GPU.
+            if use_multi_GPUs():
+                # If more information is needed, add to this tensor.
+                result = torch.tensor([test_loss_value, correct], device=get_device())
+
+                dist.barrier()
+                # Get the sum of results from all GPUs
+                dist.all_reduce(result, op=dist.ReduceOp.SUM)
+
+                # Only master GPU records all the information
+                if is_master():
+                    result = result.tolist()
+                    global_cumulative_loss += result[0]
+                    global_correct += result[1]
+            else:
+                # use single GPU or CPU
+                global_cumulative_loss += test_loss_value
+                global_correct += correct
+
+    if is_master():
+        global_cumulative_loss /= len(test_loader.dataset)
+        master_print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+            global_cumulative_loss, global_correct, len(test_loader.dataset),
+            100. * global_correct / len(test_loader.dataset)))
 
 """### DDP stuff"""
 
 def run_DDP(rank, world_size, path_input, path_csv_output, size_split, size_picture, path_csv_results, ratio):
-    print(f"Running basic DDP example on rank {rank}.")
-    setup(rank, world_size)
-    
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    return None
 
-    # create model and move it to GPU with id rank
-    model = SiameseNetwork(size_picture, device).to(rank)
-    ddp_model = DDP(model, device_ids=[rank])
+def run_main_DDP(path_input, path_csv_output):
+    num_workers =  4
+    batch_size = 512
+    gamma = 0.7
+    lr = 0.01
+    epochs = 5
+    log_interval = 5
+    transform=transforms.Compose([transforms.ToTensor()])
+    datasets = train_split_dataset(path_input,path_csv_output,ratio, transform,size_split, False)
+    master_print(len(datasets))
+    model = SiameseNetwork(size_picture, "device")
+    move_model_to_device(model)
+    model, train_loader, test_loader, train_data_sampler, test_data_sampler = DDP_prepare(
+        train_dataset=datasets[0],
+        test_dataset=datasets[1],
+        num_data_processes=num_workers,
+        global_batch_size=batch_size,
+        # In case you have sophisticated data processing function, pass it to collate_fn (i.e., collate_fn of the DataLoader)
+        collate_fn=None, model=model)
+    optimizer = optim.SGD(model.parameters(), lr=lr)
+    scheduler = StepLR(optimizer, step_size=1, gamma=gamma) # TODO: check if util
 
-    optimizer = optim.SGD(ddp_model.parameters(), lr=0.001)
+    start = time.perf_counter()
+    for epoch in range(1, epochs+1):
+        train(log_interval, model, train_loader, train_data_sampler, optimizer, epoch)
+        test(model, test_loader)
+        scheduler.step()
+    end = time.perf_counter()
+    master_print("Total Training Time %.2f seconds" % (end - start))
 
-    optimizer.zero_grad()
-    # outputs = ddp_model(torch.randn(20, 10))
-    batch_size = 1024
-    data_transform = transforms.Compose([transforms.ToTensor()])
-    datasets = train_split_dataset(path_input,path_csv_output,path_csv_results,ratio, rank, world_size, data_transform,size_split, False)
-    train_loader = torch.utils.data.DataLoader(datasets[0], batch_size=batch_size, shuffle=True, num_workers=1)
-    test_loader = torch.utils.data.DataLoader(datasets[1], batch_size=batch_size, shuffle=True, num_workers=1)
-    epochs=10
-    train(epochs, ddp_model, train_loader, optimizer, device, rank, path_csv_results)
-    print([test(ddp_model, train_loader, optimizer, device, 'train', rank, path_csv_results), test(ddp_model, test_loader, optimizer, device, 'test', rank, path_csv_results)])
-
-    cleanup()
+    # TODO save model 
 
 def run_demo(demo_fn, world_size,path_input, path_csv_output, size_split, size_picture, path_csv_results, ratio):
     mp.spawn(demo_fn,
@@ -557,15 +625,15 @@ def network_snapshot(network,optimizer,path,epoch,loss,losses,epochs,batch_size,
 
 if __name__ == "__main__":
     n_gpus = torch.cuda.device_count()
-    print(n_gpus)
+    master_print(n_gpus)
     start_time = time.time()
     ## parameters
     # paths
     # path_input = './data'
-    path_input = os.path.abspath(sys.argv[1])+"/"
+    path_input = os.path.abspath(sys.argv[2])+"/"
     # path_csv_output =  './output.csv'
-    path_csv_output = os.path.abspath(sys.argv[2])
-    path_csv_results = os.path.abspath(sys.argv[3])
+    path_csv_output = os.path.abspath(sys.argv[3])
+    path_csv_results = os.path.abspath(sys.argv[4])
     f=open(path_csv_results.replace('csv','txt'), 'a')
     f.write(path_csv_output+","+ path_input+","+path_csv_results+","+path_csv_results+"\n")
     f.close()
@@ -585,7 +653,13 @@ if __name__ == "__main__":
 
     ## main 
     
-    run_demo(run_DDP, 4, path_input, path_csv_output, size_split, size_picture, path_csv_results, ratio)
+    # gpu_id = "0,1,2,3"  # use GPUs 0, 1, 2, 3
+    gpu_id = "0"
+
+    set_DDP_device(gpu_id)
+
+    run_main_DDP(path_input, path_csv_output)
+
 
     # grid_results = grid_search(batch_size_list, epochs_list, lr_list, path_input, path_csv_output, size_split, size_picture, path_csv_results, ratio)
     # f=open(path_csv_results.replace('csv','txt'), 'a')
