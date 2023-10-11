@@ -1,5 +1,5 @@
 **Comment, dans un espace sans couverture GPS et sans matériel spécifique, est-il possible de se 
-localiser c’est-à-dire de trouver la salle où se trouve une personne dans un bâtiment entier ?**
+localiser ?**
 
 
 Une réponse potentielle qui est le sujet de cette étude est une localisation par détection 
